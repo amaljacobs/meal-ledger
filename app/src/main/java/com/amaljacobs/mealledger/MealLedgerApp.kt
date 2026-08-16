@@ -2,6 +2,8 @@ package com.amaljacobs.mealledger
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Column
@@ -55,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -353,9 +356,18 @@ private fun MonthlyDayCell(
     settings: UserSettings,
     modifier: Modifier = Modifier,
 ) {
+    val cellShape = RoundedCornerShape(4.dp)
+    val hasActivity = day?.entryCount?.let { it > 0 } == true
     Column(
-        modifier = modifier.aspectRatio(0.9f).padding(4.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
+        modifier = modifier
+            .aspectRatio(0.9f)
+            .background(
+                color = if (hasActivity) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.surface,
+                shape = cellShape,
+            )
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, cellShape)
+            .padding(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(day?.date?.dayOfMonth?.toString().orEmpty(), style = MaterialTheme.typography.labelMedium)
         if (day != null && day.entryCount > 0) {
