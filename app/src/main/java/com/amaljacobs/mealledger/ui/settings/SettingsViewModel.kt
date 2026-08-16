@@ -5,6 +5,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.amaljacobs.mealledger.data.settings.SettingsStore
 import com.amaljacobs.mealledger.data.settings.UserSettings
+import com.amaljacobs.mealledger.data.goals.DailyGoalStore
+import java.time.Clock
+import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,13 +17,19 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val currencyCode: String = "INR",
     val dailyWaterGoalMl: String = "2500",
+    val dailyCalorieGoal: String = "",
+    val dailyProteinGoalGrams: String = "",
     val cupSizeMl: String = "250",
     val loading: Boolean = true,
     val saving: Boolean = false,
     val error: String? = null,
 )
 
-class SettingsViewModel(private val settingsRepository: SettingsStore) : ViewModel() {
+class SettingsViewModel(
+    private val settingsRepository: SettingsStore,
+    private val dailyGoalStore: DailyGoalStore,
+    private val clock: Clock = Clock.systemDefaultZone(),
+) : ViewModel() {
     private val _state = MutableStateFlow(SettingsUiState())
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
 
@@ -32,6 +41,8 @@ class SettingsViewModel(private val settingsRepository: SettingsStore) : ViewMod
                     SettingsUiState(
                         currencyCode = settings.currencyCode,
                         dailyWaterGoalMl = settings.dailyWaterGoalMl.toString(),
+                        dailyCalorieGoal = settings.dailyCalorieGoal?.toString().orEmpty(),
+                        dailyProteinGoalGrams = settings.dailyProteinGoalGrams?.toString().orEmpty(),
                         cupSizeMl = settings.cupSizeMl.toString(),
                         loading = false,
                     )
@@ -50,9 +61,13 @@ class SettingsViewModel(private val settingsRepository: SettingsStore) : ViewMod
         val current = _state.value
         if (current.loading || current.saving) return
         val waterGoal = current.dailyWaterGoalMl.toIntOrNull()
+        val calorieGoal = current.dailyCalorieGoal.toIntOrNull()
+        val proteinGoal = current.dailyProteinGoalGrams.toIntOrNull()
         val cupSize = current.cupSizeMl.toIntOrNull()
         val error = when {
             waterGoal == null || waterGoal !in 1..20_000 -> "Water goal must be from 1 to 20,000 ml"
+            current.dailyCalorieGoal.isNotBlank() && calorieGoal !in 1..10_000 -> "Calorie goal must be from 1 to 10,000 kcal"
+            current.dailyProteinGoalGrams.isNotBlank() && proteinGoal !in 1..500 -> "Protein goal must be from 1 to 500 g"
             cupSize == null || cupSize !in 1..2_000 -> "Cup size must be from 1 to 2,000 ml"
             else -> null
         }
@@ -67,8 +82,20 @@ class SettingsViewModel(private val settingsRepository: SettingsStore) : ViewMod
                     UserSettings(
                         currencyCode = current.currencyCode,
                         dailyWaterGoalMl = requireNotNull(waterGoal),
+                        dailyCalorieGoal = calorieGoal,
+                        dailyProteinGoalGrams = proteinGoal,
                         cupSizeMl = requireNotNull(cupSize),
                     ),
+                )
+                dailyGoalStore.saveForToday(
+                    UserSettings(
+                        currencyCode = current.currencyCode,
+                        dailyWaterGoalMl = requireNotNull(waterGoal),
+                        dailyCalorieGoal = calorieGoal,
+                        dailyProteinGoalGrams = proteinGoal,
+                        cupSizeMl = requireNotNull(cupSize),
+                    ),
+                    LocalDate.now(clock),
                 )
                 _state.value = _state.value.copy(saving = false)
             } catch (error: Exception) {
@@ -82,11 +109,11 @@ class SettingsViewModel(private val settingsRepository: SettingsStore) : ViewMod
     }
 
     companion object {
-        fun factory(settingsRepository: SettingsStore): ViewModelProvider.Factory =
+        fun factory(settingsRepository: SettingsStore, dailyGoalStore: DailyGoalStore): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    SettingsViewModel(settingsRepository) as T
+                    SettingsViewModel(settingsRepository, dailyGoalStore) as T
             }
     }
 }

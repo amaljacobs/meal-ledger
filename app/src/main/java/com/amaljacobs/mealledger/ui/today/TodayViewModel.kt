@@ -8,6 +8,10 @@ import com.amaljacobs.mealledger.data.local.WaterEntryEntity
 import com.amaljacobs.mealledger.data.repository.MealLedgerRepository
 import com.amaljacobs.mealledger.data.settings.SettingsRepository
 import com.amaljacobs.mealledger.data.settings.UserSettings
+import com.amaljacobs.mealledger.data.goals.DailyGoal
+import com.amaljacobs.mealledger.data.goals.DailyGoalStore
+import com.amaljacobs.mealledger.data.goals.goalForDate
+import com.amaljacobs.mealledger.data.goals.toDailyGoal
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -21,6 +25,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 data class DailyTotals(
     val calories: Int = 0,
+    val proteinGrams: Int = 0,
     val spendMinor: Long = 0,
     val waterMl: Int = 0,
 )
@@ -47,6 +52,7 @@ sealed interface TodayUiState {
         val selectedDate: LocalDate,
         val entries: List<TimelineEntry>,
         val totals: DailyTotals,
+        val goal: DailyGoal,
         val settings: UserSettings,
     ) : TodayUiState
 }
@@ -55,6 +61,7 @@ sealed interface TodayUiState {
 class TodayViewModel(
     private val repository: MealLedgerRepository,
     private val settingsRepository: SettingsRepository,
+    private val dailyGoalStore: DailyGoalStore,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private val selectedDate = MutableStateFlow(LocalDate.now(clock))
@@ -68,11 +75,13 @@ class TodayViewModel(
         combine(
             repository.observeFoodEntries(start, end),
             repository.observeWaterEntries(start, end),
-        ) { foodEntries, waterEntries ->
+            dailyGoalStore.goals,
+        ) { foodEntries, waterEntries, goals ->
             TodayUiState.Ready(
                 selectedDate = date,
                 entries = timelineEntries(foodEntries, waterEntries),
                 totals = calculateDailyTotals(foodEntries, waterEntries),
+                goal = goalForDate(date, goals, settings.toDailyGoal()),
                 settings = settings,
             )
         }
@@ -97,11 +106,12 @@ class TodayViewModel(
         fun factory(
             repository: MealLedgerRepository,
             settingsRepository: SettingsRepository,
+            dailyGoalStore: DailyGoalStore,
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    TodayViewModel(repository, settingsRepository) as T
+                    TodayViewModel(repository, settingsRepository, dailyGoalStore) as T
             }
     }
 }
@@ -111,6 +121,7 @@ fun calculateDailyTotals(
     waterEntries: List<WaterEntryEntity>,
 ): DailyTotals = DailyTotals(
     calories = foodEntries.sumOf { it.calories ?: 0 },
+    proteinGrams = foodEntries.sumOf { it.proteinGrams ?: 0 },
     spendMinor = foodEntries.sumOf { it.priceMinor ?: 0L },
     waterMl = waterEntries.sumOf(WaterEntryEntity::amountMl),
 )

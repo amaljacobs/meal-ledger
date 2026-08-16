@@ -1,0 +1,188 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 3,
+    "identityHash": "3ed70b805d6e2deb9d4d6c1bbda31a41",
+    "entities": [
+      {
+        "tableName": "food_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `consumed_at` INTEGER NOT NULL, `meal_type` TEXT, `portion_note` TEXT, `calories` INTEGER, `protein_grams` INTEGER, `price_minor` INTEGER, `currency_code` TEXT, `note` TEXT, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consumedAt",
+            "columnName": "consumed_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mealType",
+            "columnName": "meal_type",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "portionNote",
+            "columnName": "portion_note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "calories",
+            "columnName": "calories",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "proteinGrams",
+            "columnName": "protein_grams",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "priceMinor",
+            "columnName": "price_minor",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "currencyCode",
+            "columnName": "currency_code",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_food_entries_consumed_at",
+            "unique": false,
+            "columnNames": [
+              "consumed_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_food_entries_consumed_at` ON `${TABLE_NAME}` (`consumed_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "water_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `amount_ml` INTEGER NOT NULL, `consumed_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amountMl",
+            "columnName": "amount_ml",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consumedAt",
+            "columnName": "consumed_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_water_entries_consumed_at",
+            "unique": false,
+            "columnNames": [
+              "consumed_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_water_entries_consumed_at` ON `${TABLE_NAME}` (`consumed_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "daily_goals",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`effective_date` TEXT NOT NULL, `daily_water_goal_ml` INTEGER NOT NULL, `daily_calorie_goal` INTEGER, `daily_protein_goal_grams` INTEGER, PRIMARY KEY(`effective_date`))",
+        "fields": [
+          {
+            "fieldPath": "effectiveDate",
+            "columnName": "effective_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dailyWaterGoalMl",
+            "columnName": "daily_water_goal_ml",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dailyCalorieGoal",
+            "columnName": "daily_calorie_goal",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "dailyProteinGoalGrams",
+            "columnName": "daily_protein_goal_grams",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "effective_date"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3ed70b805d6e2deb9d4d6c1bbda31a41')"
+    ]
+  }
+}

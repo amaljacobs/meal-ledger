@@ -14,3 +14,4 @@ Record decisions here when they affect future work or would otherwise be easy to
 | 2026-08-16 | Track optional protein in whole grams for the MVP; defer carbohydrates and fats. | Protein adds useful context without making the food form or reports unnecessarily dense. |
 | 2026-08-16 | Store water in millilitres while offering cup and bottle shortcuts in the UI. | Millilitres keep totals consistent; familiar shortcuts reduce logging friction. |
 | 2026-08-17 | Use Monday-Sunday weeks and a Monday-first monthly grid in Summary. | Calendar-aligned periods make past activity predictable to review and prevent rolling-range ambiguity. |
+| 2026-08-17 | Store goals as date-effective snapshots in Room, while keeping the current editable values in DataStore. | A settings change must affect the current day forward without rewriting historical water, calorie, or protein progress. |

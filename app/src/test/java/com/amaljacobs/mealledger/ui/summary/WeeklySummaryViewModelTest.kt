@@ -1,6 +1,7 @@
 package com.amaljacobs.mealledger.ui.summary
 
 import com.amaljacobs.mealledger.data.local.FoodEntryEntity
+import com.amaljacobs.mealledger.data.local.DailyGoalEntity
 import com.amaljacobs.mealledger.data.local.WaterEntryEntity
 import com.amaljacobs.mealledger.data.settings.UserSettings
 import java.time.Clock
@@ -33,6 +34,7 @@ class WeeklySummaryViewModelTest {
                 WaterEntryEntity(2, 1_300, timestamp, timestamp, timestamp),
             ),
             settings = UserSettings(dailyWaterGoalMl = 2_500),
+            goals = emptyList(),
             clock = clock,
         )
 
@@ -42,6 +44,31 @@ class WeeklySummaryViewModelTest {
         assertEquals(12550, summary.totalSpendMinor)
         assertEquals(357, summary.averageWaterMl)
         assertEquals(1, summary.daysAtWaterGoal)
+        assertEquals(null, summary.daysAtCalorieGoal)
+        assertEquals(null, summary.daysAtProteinGoal)
+    }
+
+    @Test
+    fun summaryUsesTheGoalThatWasEffectiveOnEachDate() {
+        val summary = summaryForPeriod(
+            period = summaryPeriodFor(SummaryMode.Week, LocalDate.parse("2026-08-10")),
+            foodEntries = listOf(
+                FoodEntryEntity(name = "Monday", calories = 2_100, proteinGrams = 110, consumedAt = Instant.parse("2026-08-10T12:00:00Z"), createdAt = timestamp, updatedAt = timestamp),
+                FoodEntryEntity(name = "Tuesday", calories = 1_900, proteinGrams = 80, consumedAt = Instant.parse("2026-08-11T12:00:00Z"), createdAt = timestamp, updatedAt = timestamp),
+            ),
+            waterEntries = emptyList(),
+            settings = UserSettings(dailyWaterGoalMl = 3_000, dailyCalorieGoal = 2_500, dailyProteinGoalGrams = 120),
+            goals = listOf(
+                DailyGoalEntity("0001-01-01", 2_500, 2_000, 100),
+                DailyGoalEntity("2026-08-11", 3_000, 1_800, 75),
+            ),
+            clock = clock,
+        )
+
+        assertEquals(2, summary.daysAtCalorieGoal)
+        assertEquals(7, summary.calorieGoalDayCount)
+        assertEquals(2, summary.daysAtProteinGoal)
+        assertEquals(7, summary.proteinGoalDayCount)
     }
 
     @Test

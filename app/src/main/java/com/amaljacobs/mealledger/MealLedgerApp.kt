@@ -71,6 +71,7 @@ import androidx.navigation.navArgument
 import com.amaljacobs.mealledger.data.repository.MealLedgerRepository
 import com.amaljacobs.mealledger.data.settings.SettingsRepository
 import com.amaljacobs.mealledger.data.settings.UserSettings
+import com.amaljacobs.mealledger.data.goals.DailyGoalStore
 import com.amaljacobs.mealledger.ui.today.DailyTotals
 import com.amaljacobs.mealledger.ui.today.TimelineEntry
 import com.amaljacobs.mealledger.ui.today.TodayUiState
@@ -123,6 +124,7 @@ private val topLevelDestinations = listOf(
 fun MealLedgerApp(
     repository: MealLedgerRepository,
     settingsRepository: SettingsRepository,
+    dailyGoalStore: DailyGoalStore,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -161,6 +163,7 @@ fun MealLedgerApp(
                 TodayScreen(
                     repository = repository,
                     settingsRepository = settingsRepository,
+                    dailyGoalStore = dailyGoalStore,
                     onAddFood = { navController.navigate("add-food") },
                     onAddWater = { navController.navigate("add-water") },
                     onEditFood = { id -> navController.navigate("edit-food/$id") },
@@ -197,9 +200,9 @@ fun MealLedgerApp(
                     onNavigateBack = { navController.popBackStack() },
                 )
             }
-            composable(AppDestination.Settings.route) { SettingsScreen(settingsRepository) }
+            composable(AppDestination.Settings.route) { SettingsScreen(settingsRepository, dailyGoalStore) }
             composable(AppDestination.Summary.route) {
-                WeeklySummaryScreen(repository, settingsRepository)
+                WeeklySummaryScreen(repository, settingsRepository, dailyGoalStore)
             }
         }
     }
@@ -209,9 +212,10 @@ fun MealLedgerApp(
 private fun WeeklySummaryScreen(
     repository: MealLedgerRepository,
     settingsRepository: SettingsRepository,
+    dailyGoalStore: DailyGoalStore,
 ) {
     val viewModel: WeeklySummaryViewModel = viewModel(
-        factory = WeeklySummaryViewModel.factory(repository, settingsRepository),
+        factory = WeeklySummaryViewModel.factory(repository, settingsRepository, dailyGoalStore),
     )
     when (val state = viewModel.uiState.collectAsState().value) {
         WeeklySummaryUiState.Loading -> LoadingScreen()
@@ -284,11 +288,14 @@ private fun WeeklySummaryContent(
             }
         }
         item {
-            Text(
-                "${state.daysAtWaterGoal} of ${state.days.size} days reached your water goal",
-                modifier = Modifier.padding(horizontal = 20.dp),
-                style = MaterialTheme.typography.bodyMedium,
+            TotalMetric(
+                "Protein",
+                "${state.totalProteinGrams} g",
+                Modifier.padding(horizontal = 20.dp),
             )
+        }
+        item {
+            GoalAttainment(state)
         }
         if (state.period.mode == SummaryMode.Month) {
             item { MonthlyCalendar(state) }
@@ -302,6 +309,25 @@ private fun WeeklySummaryContent(
                 )
             }
             items(state.days, key = { it.date }) { day -> WeeklyDayRow(day, state.settings) }
+        }
+    }
+}
+
+@Composable
+private fun GoalAttainment(state: WeeklySummaryUiState.Ready) {
+    Column(
+        modifier = Modifier.padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            "Water goal: ${state.daysAtWaterGoal} of ${state.days.size} days",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        state.daysAtCalorieGoal?.let {
+            Text("Calorie goal: $it of ${state.calorieGoalDayCount} days", style = MaterialTheme.typography.bodyMedium)
+        }
+        state.daysAtProteinGoal?.let {
+            Text("Protein goal: $it of ${state.proteinGoalDayCount} days", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
@@ -416,13 +442,14 @@ private fun WeeklyDayRow(day: WeeklyDaySummary, settings: UserSettings) {
 private fun TodayScreen(
     repository: MealLedgerRepository,
     settingsRepository: SettingsRepository,
+    dailyGoalStore: DailyGoalStore,
     onAddFood: () -> Unit,
     onAddWater: () -> Unit,
     onEditFood: (Long) -> Unit,
     onEditWater: (Long) -> Unit,
 ) {
     val viewModel: TodayViewModel = viewModel(
-        factory = TodayViewModel.factory(repository, settingsRepository),
+        factory = TodayViewModel.factory(repository, settingsRepository, dailyGoalStore),
     )
     val state by viewModel.uiState.collectAsState()
     when (state) {
@@ -460,7 +487,7 @@ fun TodayScreenContent(
                 onNextDay = onNextDay,
             )
         }
-        item { DailyTotalsRow(state.totals, state.settings) }
+        item { DailyTotalsRow(state.totals, state.settings, state.goal) }
         item {
             Row(
                 modifier = Modifier.padding(horizontal = 20.dp),
@@ -645,24 +672,37 @@ private fun DateSelector(
 }
 
 @Composable
-private fun DailyTotalsRow(totals: DailyTotals, settings: UserSettings) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        TotalMetric(
-            label = "Calories",
-            value = totals.calories.toString(),
-            modifier = Modifier.weight(1f),
-        )
-        TotalMetric(
-            label = "Spend",
-            value = formatMoney(totals.spendMinor, settings.currencyCode),
-            modifier = Modifier.weight(1f),
-        )
-        WaterTotalMetric(totals.waterMl, settings.dailyWaterGoalMl)
+private fun DailyTotalsRow(totals: DailyTotals, settings: UserSettings, goal: com.amaljacobs.mealledger.data.goals.DailyGoal) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            GoalTotalMetric("Calories", totals.calories, goal.calories, "kcal", Modifier.weight(1f))
+            TotalMetric(
+                label = "Spend",
+                value = formatMoney(totals.spendMinor, settings.currencyCode),
+                modifier = Modifier.weight(1f),
+            )
+            WaterTotalMetric(totals.waterMl, goal.waterMl)
+        }
+        if (goal.proteinGrams != null) {
+            GoalTotalMetric("Protein", totals.proteinGrams, goal.proteinGrams, "g", Modifier.padding(horizontal = 20.dp))
+        }
+    }
+}
+
+@Composable
+private fun GoalTotalMetric(label: String, value: Int, goal: Int?, unit: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(text = label, style = MaterialTheme.typography.labelLarge)
+        Text(text = "$value $unit", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        goal?.let {
+            LinearProgressIndicator(progress = { (value.toFloat() / it).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+            Text(text = "/ $it $unit", style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
 
@@ -779,8 +819,8 @@ private fun LoadingScreen() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingsScreen(settingsRepository: SettingsRepository) {
-    val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.factory(settingsRepository))
+private fun SettingsScreen(settingsRepository: SettingsRepository, dailyGoalStore: DailyGoalStore) {
+    val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.factory(settingsRepository, dailyGoalStore))
     val state by viewModel.state.collectAsState()
     var currencyMenuExpanded by remember { mutableStateOf(false) }
     val currencies = listOf("INR", "USD", "EUR", "GBP", "AED")
@@ -824,6 +864,24 @@ private fun SettingsScreen(settingsRepository: SettingsRepository) {
                 value = state.dailyWaterGoalMl,
                 onValueChange = { value -> viewModel.update { it.copy(dailyWaterGoalMl = value) } },
                 label = { Text("Daily water goal (ml)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+        }
+        item {
+            OutlinedTextField(
+                value = state.dailyCalorieGoal,
+                onValueChange = { value -> viewModel.update { it.copy(dailyCalorieGoal = value) } },
+                label = { Text("Daily calorie goal (kcal, optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+        }
+        item {
+            OutlinedTextField(
+                value = state.dailyProteinGoalGrams,
+                onValueChange = { value -> viewModel.update { it.copy(dailyProteinGoalGrams = value) } },
+                label = { Text("Daily protein goal (g, optional)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
