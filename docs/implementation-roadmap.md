@@ -8,12 +8,13 @@ This roadmap turns the MVP specification into a dependency-aware delivery order.
 | --- | --- |
 | #8 | MVP screens, flows, data model, and technical decisions documented. |
 | #1 | Android project and navigation foundation completed. |
+| #10 | Room version-1 persistence, repository, exported schema, and device tests completed. |
 
 ## Current Work
 
-### #10 Add Room local database
+### #13 Add optional protein to food entries
 
-Add version-1 Room entities and DAOs for food and water, a repository that exposes observable day-window data, and focused persistence tests. Document the explicit migration policy before future schema changes exist.
+Add optional whole-gram protein storage through a Room version-2 migration. Preserve version-1 food and water data, update the exported schema, and add migration coverage before any entry screens rely on the extension.
 
 ## Delivery Order
 
@@ -21,13 +22,14 @@ Add version-1 Room entities and DAOs for food and water, a repository that expos
 | --- | --- | --- |
 | 1 | #1 Android and navigation foundation | Establishes the executable app and screen structure. |
 | 2 | #10 Room local database | Provides offline persistence and observable data for every core screen. |
-| 3 | #6 Today screen with daily totals | Establishes the main read experience, empty state, ordering, and derived totals. |
-| 4 | #7 Food-entry creation flow | Adds the main food-recording workflow against the established data layer. |
-| 5 | #9 Water-entry creation flow | Adds hydration logging using the same date/time and persistence patterns. |
-| 6 | #4 Edit and delete actions | Makes real daily tracking practical by correcting mistakes. |
-| 7 | #5 Settings for currency and water goal | Adds persisted preferences and makes totals/presentation personal. |
-| 8 | #3 Weekly summary screen | Builds on reliable historical entries and settings. |
-| 9 | #2 First internal test release | Validates the complete MVP as an installable release build. |
+| 3 | #13 Optional protein database migration | Finalizes the MVP food schema before screens begin consuming it. |
+| 4 | #6 Today screen with daily totals | Establishes the main read experience, empty state, ordering, and derived totals. |
+| 5 | #7 Food-entry creation flow | Adds the main food-recording workflow against the established data layer. |
+| 6 | #9 Water-entry creation flow | Adds hydration logging using the same date/time and persistence patterns. |
+| 7 | #4 Edit and delete actions | Makes real daily tracking practical by correcting mistakes. |
+| 8 | #5 Settings for currency, water goal, and cup size | Adds persisted preferences and makes totals/presentation personal. |
+| 9 | #3 Weekly summary screen | Builds on reliable historical entries and settings. |
+| 10 | #2 First internal test release | Validates the complete MVP as an installable release build. |
 
 ## Completion Checklist
 
