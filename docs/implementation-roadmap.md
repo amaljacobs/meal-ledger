@@ -19,9 +19,19 @@ This roadmap turns the MVP specification into a dependency-aware delivery order.
 
 ## Current Work
 
-### #3 Weekly summary screen
+### #2 First internal test release
 
-Build the historical weekly view from persisted entries and the daily water goal. The view covers the current day and the preceding six calendar days, including days without entries.
+Prepare the signed release APK, privacy statement, and device test sign-off for the complete MVP.
+
+## Next Planned Work
+
+| Priority | Issue | Outcome |
+| --- | --- | --- |
+| 1 | #24 Fix settings save state | Restore repeatable settings updates and add failure-path tests. |
+| 2 | #26 Improve entry-form navigation and prevent future-day logging | Make return navigation explicit and prevent invalid future records. |
+| 3 | #25 Add navigable weekly and monthly summary views | Add reviewable historical week and month ranges without future navigation. |
+| 4 | #27 Add calorie and protein goals with historical goal tracking | Introduce effective-dated goal data, a Room migration, and goal progress. |
+| 5 | #28 Strengthen local data persistence and migration coverage | Prove durable file-backed persistence and protect every supported migration. |
 
 ## Delivery Order
 
@@ -38,6 +48,11 @@ Build the historical weekly view from persisted entries and the daily water goal
 | 9 | #5 Settings for currency, water goal, and cup size | Adds persisted preferences and makes totals/presentation personal. |
 | 10 | #3 Weekly summary screen | Builds on reliable historical entries and settings. |
 | 11 | #2 First internal test release | Validates the complete MVP as an installable release build. |
+| 12 | #24 Settings save-state correction | Removes a blocking defect found during internal testing. |
+| 13 | #26 Form navigation and future-date constraints | Establishes reliable entry workflow boundaries before expanding reports. |
+| 14 | #25 Navigable weekly and monthly summary | Expands historical review against the existing stable entry data. |
+| 15 | #27 Effective-dated goals | Requires a new data model and migration, so it follows the smaller UI corrections. |
+| 16 | #28 Persistence and migration regression coverage | Completes coverage after the new goal schema is known. |
 
 ## Completion Checklist
 
