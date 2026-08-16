@@ -6,10 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.amaljacobs.mealledger.data.local.FoodEntryEntity
 import com.amaljacobs.mealledger.data.local.MealType
 import com.amaljacobs.mealledger.data.repository.MealLedgerRepository
+import com.amaljacobs.mealledger.data.settings.SettingsRepository
 import java.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class FoodEntryFormState(
@@ -27,6 +29,7 @@ data class FoodEntryFormState(
 
 class FoodEntryViewModel(
     private val repository: MealLedgerRepository,
+    private val settingsRepository: SettingsRepository,
     private val onSaved: () -> Unit,
     entryId: Long? = null,
     private val clock: Clock = Clock.systemDefaultZone(),
@@ -45,19 +48,20 @@ class FoodEntryViewModel(
         val current = _state.value
         val calories = current.calories.toIntOrNull()
         val protein = current.proteinGrams.toIntOrNull()
-        val price = current.price.toDoubleOrNull()
+        val priceMinor = current.price.takeIf(String::isNotBlank)?.let(::parsePriceMinor)
         val error = when {
             current.name.trim().isEmpty() -> "Food name is required"
             current.name.trim().length > 100 -> "Food name must be 100 characters or fewer"
             current.calories.isNotBlank() && (calories == null || calories < 0) -> "Calories must be a non-negative whole number"
             current.proteinGrams.isNotBlank() && (protein == null || protein < 0) -> "Protein must be a non-negative whole number"
-            current.price.isNotBlank() && (price == null || price < 0) -> "Price must be a non-negative number"
+            current.price.isNotBlank() && priceMinor == null -> "Price must be a non-negative amount with up to two decimal places"
             else -> null
         }
         if (error != null) { _state.value = current.copy(error = error); return }
         viewModelScope.launch {
             _state.value = current.copy(saving = true)
             val now = clock.instant()
+            val currencyCode = settingsRepository.settings.first().currencyCode
             val entry = FoodEntryEntity(
                 id = existingEntry?.id ?: 0,
                 name = current.name.trim(),
@@ -66,8 +70,8 @@ class FoodEntryViewModel(
                 portionNote = current.portionNote.trim().ifBlank { null },
                 calories = calories,
                 proteinGrams = protein,
-                priceMinor = price?.let { (it * 100).toLong() },
-                currencyCode = if (price == null) null else "INR",
+                priceMinor = priceMinor,
+                currencyCode = if (priceMinor == null) null else currencyCode,
                 note = current.note.trim().ifBlank { null },
                 createdAt = existingEntry?.createdAt ?: now,
                 updatedAt = now,
@@ -108,8 +112,20 @@ class FoodEntryViewModel(
     }
 
     companion object {
-        fun factory(repository: MealLedgerRepository, onSaved: () -> Unit, entryId: Long? = null) = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = FoodEntryViewModel(repository, onSaved, entryId) as T
+        fun factory(
+            repository: MealLedgerRepository,
+            settingsRepository: SettingsRepository,
+            onSaved: () -> Unit,
+            entryId: Long? = null,
+        ) = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = FoodEntryViewModel(repository, settingsRepository, onSaved, entryId) as T
         }
     }
+}
+
+fun parsePriceMinor(value: String): Long? {
+    val match = Regex("^(\\d+)(?:\\.(\\d{1,2}))?$").matchEntire(value.trim()) ?: return null
+    val whole = match.groupValues[1].toLongOrNull() ?: return null
+    val fractional = match.groupValues[2].padEnd(2, '0').toLongOrNull() ?: return null
+    return whole.takeIf { it <= (Long.MAX_VALUE - fractional) / 100 }?.times(100)?.plus(fractional)
 }
