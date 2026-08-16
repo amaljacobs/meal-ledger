@@ -10,3 +10,4 @@ Record decisions here when they affect future work or would otherwise be easy to
 | 2026-08-13 | Support Android API 26 and above for the MVP. | It gives modern Android API support while covering a broad range of devices. |
 | 2026-08-13 | Store monetary amounts in minor currency units and record the entry currency. | It prevents floating-point rounding issues and preserves historical entries when a user changes currency. |
 | 2026-08-13 | Use Room for entries and DataStore Preferences for settings. | Both are Android-supported local persistence solutions suited to their respective data types. |
+| 2026-08-16 | Begin the Room schema at version 1, commit its exported JSON schema, and add explicit migrations for every later schema version. | Entries are user data, so upgrades must preserve them; destructive migration is not an acceptable release strategy. |

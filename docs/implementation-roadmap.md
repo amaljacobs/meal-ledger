@@ -7,12 +7,13 @@ This roadmap turns the MVP specification into a dependency-aware delivery order.
 | Issue | Outcome |
 | --- | --- |
 | #8 | MVP screens, flows, data model, and technical decisions documented. |
+| #1 | Android project and navigation foundation completed. |
 
 ## Current Work
 
-### #1 Create Android project with Kotlin and Jetpack Compose
+### #10 Add Room local database
 
-The Android Studio project now opens and launches on a physical device. Finish this issue by replacing the generated greeting with a small navigation host and stable routes for `today` and `settings`. Commit the generated Android project and the navigation baseline together.
+Add version-1 Room entities and DAOs for food and water, a repository that exposes observable day-window data, and focused persistence tests. Document the explicit migration policy before future schema changes exist.
 
 ## Delivery Order
 
