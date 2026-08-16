@@ -15,7 +15,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.BreakfastDining
+import androidx.compose.material.icons.outlined.DinnerDining
+import androidx.compose.material.icons.outlined.Fastfood
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.LunchDining
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.WaterDrop
@@ -384,11 +388,12 @@ private fun TimelineRow(entry: TimelineEntry, onClick: () -> Unit) {
         .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
     val (icon, title, detail) = when (entry) {
         is TimelineEntry.Food -> Triple(
-            Icons.Outlined.Restaurant,
+            foodIcon(entry.entry.mealType),
             entry.entry.name,
             listOfNotNull(
                 entry.entry.portionNote,
                 entry.entry.calories?.let { "$it kcal" },
+                entry.entry.proteinGrams?.let { "${it}g protein" },
             ).joinToString(" | "),
         )
         is TimelineEntry.Water -> Triple(
@@ -415,6 +420,14 @@ private fun TimelineRow(entry: TimelineEntry, onClick: () -> Unit) {
         Text(text = time, style = MaterialTheme.typography.bodyMedium)
     }
     HorizontalDivider(modifier = Modifier.padding(start = 56.dp, top = 12.dp))
+}
+
+private fun foodIcon(mealType: MealType?): ImageVector = when (mealType) {
+    MealType.BREAKFAST -> Icons.Outlined.BreakfastDining
+    MealType.LUNCH -> Icons.Outlined.LunchDining
+    MealType.DINNER -> Icons.Outlined.DinnerDining
+    MealType.SNACK -> Icons.Outlined.Fastfood
+    MealType.OTHER, null -> Icons.Outlined.Restaurant
 }
 
 @Composable
