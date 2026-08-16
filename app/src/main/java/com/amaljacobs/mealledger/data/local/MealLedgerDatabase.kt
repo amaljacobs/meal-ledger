@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 
 @Database(
     entities = [FoodEntryEntity::class, WaterEntryEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(InstantConverters::class)
@@ -25,6 +25,7 @@ abstract class MealLedgerDatabase : RoomDatabase() {
                 context.applicationContext,
                 MealLedgerDatabase::class.java,
                 DATABASE_NAME,
-            ).build()
+            ).addMigrations(*DatabaseMigrations.all)
+                .build()
     }
 }
