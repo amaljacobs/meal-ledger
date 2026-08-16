@@ -11,12 +11,13 @@ This roadmap turns the MVP specification into a dependency-aware delivery order.
 | #10 | Room version-1 persistence, repository, exported schema, and device tests completed. |
 | #13 | Optional protein storage, Room version-2 migration, exported schema, and device migration test completed. |
 | #6 | Today dashboard, local-day navigation, Room-backed daily totals, empty/loading states, and dashboard unit tests completed. |
+| #7 | Food-entry form with optional meal, portion, calories, protein, price, and note fields completed; validation and on-device saving verified. |
 
 ## Current Work
 
-### #7 Build the food-entry creation flow
+### #9 Build the water-entry creation flow
 
-Add the validated food form, persist entries, and return to the Today dashboard after saving.
+Add the validated water form, quick amounts, and persistence flow.
 
 ## Delivery Order
 
@@ -29,9 +30,10 @@ Add the validated food form, persist entries, and return to the Today dashboard 
 | 5 | #7 Food-entry creation flow | Adds the main food-recording workflow against the established data layer. |
 | 6 | #9 Water-entry creation flow | Adds hydration logging using the same date/time and persistence patterns. |
 | 7 | #4 Edit and delete actions | Makes real daily tracking practical by correcting mistakes. |
-| 8 | #5 Settings for currency, water goal, and cup size | Adds persisted preferences and makes totals/presentation personal. |
-| 9 | #3 Weekly summary screen | Builds on reliable historical entries and settings. |
-| 10 | #2 First internal test release | Validates the complete MVP as an installable release build. |
+| 8 | #17 Improve food timeline presentation | Adds meal-type icons and visible optional protein after entry correction workflows are complete. |
+| 9 | #5 Settings for currency, water goal, and cup size | Adds persisted preferences and makes totals/presentation personal. |
+| 10 | #3 Weekly summary screen | Builds on reliable historical entries and settings. |
+| 11 | #2 First internal test release | Validates the complete MVP as an installable release build. |
 
 ## Completion Checklist
 

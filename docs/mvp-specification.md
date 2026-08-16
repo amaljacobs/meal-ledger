@@ -11,7 +11,7 @@ The default screen shows the selected day's totals and chronological activity.
 - Header: selected date, with previous-day, next-day, and date-picker actions.
 - Summary: food calories, food spending, water amount, and water-goal progress.
 - Quick actions: add food and add water.
-- Timeline: food and water entries ordered by consumed time, newest first when times are equal.
+- Timeline: food and water entries ordered by consumed time, newest first when times are equal. Food rows show a contextual meal-type icon when set and show optional protein when recorded.
 - Empty state: clear actions to add the first food or water entry.
 
 ### Add or Edit Food
