@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LunchDining
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -74,6 +75,9 @@ import com.amaljacobs.mealledger.ui.food.FoodEntryFormState
 import com.amaljacobs.mealledger.data.local.MealType
 import com.amaljacobs.mealledger.ui.water.WaterEntryViewModel
 import com.amaljacobs.mealledger.ui.settings.SettingsViewModel
+import com.amaljacobs.mealledger.ui.summary.WeeklyDaySummary
+import com.amaljacobs.mealledger.ui.summary.WeeklySummaryUiState
+import com.amaljacobs.mealledger.ui.summary.WeeklySummaryViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -94,9 +98,19 @@ sealed interface AppDestination {
         override val icon = Icons.Outlined.Settings
         override val route = "settings"
     }
+
+    data object Summary : AppDestination {
+        override val label = "Summary"
+        override val icon = Icons.Outlined.DateRange
+        override val route = "summary"
+    }
 }
 
-private val topLevelDestinations = listOf(AppDestination.Today, AppDestination.Settings)
+private val topLevelDestinations = listOf(
+    AppDestination.Today,
+    AppDestination.Summary,
+    AppDestination.Settings,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -176,8 +190,88 @@ fun MealLedgerApp(
                 )
             }
             composable(AppDestination.Settings.route) { SettingsScreen(settingsRepository) }
+            composable(AppDestination.Summary.route) {
+                WeeklySummaryScreen(repository, settingsRepository)
+            }
         }
     }
+}
+
+@Composable
+private fun WeeklySummaryScreen(
+    repository: MealLedgerRepository,
+    settingsRepository: SettingsRepository,
+) {
+    val viewModel: WeeklySummaryViewModel = viewModel(
+        factory = WeeklySummaryViewModel.factory(repository, settingsRepository),
+    )
+    when (val state = viewModel.uiState.collectAsState().value) {
+        WeeklySummaryUiState.Loading -> LoadingScreen()
+        is WeeklySummaryUiState.Ready -> WeeklySummaryContent(state)
+    }
+}
+
+@Composable
+private fun WeeklySummaryContent(state: WeeklySummaryUiState.Ready) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        item {
+            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                Text("Last 7 days", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "${state.days.first().date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))} - ${state.days.last().date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))}",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                TotalMetric("Calories", state.totalCalories.toString(), Modifier.weight(1f))
+                TotalMetric("Food spend", formatMoney(state.totalSpendMinor, state.settings.currencyCode), Modifier.weight(1f))
+                TotalMetric("Avg. water", "${state.averageWaterMl} ml", Modifier.weight(1f))
+            }
+        }
+        item {
+            Text(
+                "${state.daysAtWaterGoal} of 7 days reached your water goal",
+                modifier = Modifier.padding(horizontal = 20.dp),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        item {
+            Text(
+                "Daily activity",
+                modifier = Modifier.padding(horizontal = 20.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        items(state.days, key = { it.date }) { day -> WeeklyDayRow(day, state.settings) }
+    }
+}
+
+@Composable
+private fun WeeklyDayRow(day: WeeklyDaySummary, settings: UserSettings) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(day.date.format(DateTimeFormatter.ofPattern("EEE, MMM d")), fontWeight = FontWeight.Medium)
+            Text(
+                if (day.entryCount == 0) "No entries" else "${day.calories} kcal | ${day.waterMl} ml",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        Text(formatMoney(day.spendMinor, settings.currencyCode), style = MaterialTheme.typography.bodyMedium)
+    }
+    HorizontalDivider(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp))
 }
 
 @Composable

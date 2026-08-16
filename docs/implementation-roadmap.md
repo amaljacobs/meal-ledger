@@ -21,7 +21,7 @@ This roadmap turns the MVP specification into a dependency-aware delivery order.
 
 ### #3 Weekly summary screen
 
-Build the historical weekly view from the persisted entries and daily water goal.
+Build the historical weekly view from persisted entries and the daily water goal. The view covers the current day and the preceding six calendar days, including days without entries.
 
 ## Delivery Order
 
