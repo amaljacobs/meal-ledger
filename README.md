@@ -4,7 +4,7 @@ An Android app for recording food, water intake, and food spending.
 
 ## Project Status
 
-Planning. No application code has been added yet.
+Foundation setup in progress. The Android baseline runs on a physical device; feature development has not started.
 
 ## Documentation
 
@@ -12,6 +12,7 @@ Planning. No application code has been added yet.
 - [MVP specification](docs/mvp-specification.md)
 - [Technical plan](docs/technical-plan.md)
 - [Initial setup guide](docs/initial-setup.md)
+- [Implementation roadmap](docs/implementation-roadmap.md)
 - [Milestones](docs/milestones.md)
 - [Project workflow](docs/project-workflow.md)
 - [Decision log](docs/decisions.md)
