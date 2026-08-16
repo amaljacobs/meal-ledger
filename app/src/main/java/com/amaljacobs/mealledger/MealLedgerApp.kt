@@ -2,10 +2,13 @@ package com.amaljacobs.mealledger
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -54,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -79,6 +83,7 @@ import com.amaljacobs.mealledger.ui.settings.SettingsViewModel
 import com.amaljacobs.mealledger.ui.summary.WeeklyDaySummary
 import com.amaljacobs.mealledger.ui.summary.WeeklySummaryUiState
 import com.amaljacobs.mealledger.ui.summary.WeeklySummaryViewModel
+import com.amaljacobs.mealledger.ui.summary.SummaryMode
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -210,23 +215,62 @@ private fun WeeklySummaryScreen(
     )
     when (val state = viewModel.uiState.collectAsState().value) {
         WeeklySummaryUiState.Loading -> LoadingScreen()
-        is WeeklySummaryUiState.Ready -> WeeklySummaryContent(state)
+        is WeeklySummaryUiState.Ready -> WeeklySummaryContent(
+            state = state,
+            onPreviousPeriod = viewModel::showPreviousPeriod,
+            onNextPeriod = viewModel::showNextPeriod,
+            onModeSelected = viewModel::selectMode,
+        )
     }
 }
 
 @Composable
-private fun WeeklySummaryContent(state: WeeklySummaryUiState.Ready) {
+private fun WeeklySummaryContent(
+    state: WeeklySummaryUiState.Ready,
+    onPreviousPeriod: () -> Unit,
+    onNextPeriod: () -> Unit,
+    onModeSelected: (SummaryMode) -> Unit,
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
-                Text("Last 7 days", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(
-                    "${state.days.first().date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))} - ${state.days.last().date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))}",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onPreviousPeriod) {
+                        Icon(Icons.Outlined.ChevronLeft, contentDescription = "Previous ${state.period.mode.name.lowercase()}")
+                    }
+                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            if (state.period.mode == SummaryMode.Week) "Week summary" else "Month summary",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            periodLabel(state),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                    IconButton(
+                        onClick = onNextPeriod,
+                        enabled = state.canNavigateForward,
+                    ) {
+                        Icon(Icons.Outlined.ChevronRight, contentDescription = "Next ${state.period.mode.name.lowercase()}")
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = state.period.mode == SummaryMode.Week,
+                        onClick = { onModeSelected(SummaryMode.Week) },
+                        label = { Text("Week") },
+                    )
+                    FilterChip(
+                        selected = state.period.mode == SummaryMode.Month,
+                        onClick = { onModeSelected(SummaryMode.Month) },
+                        label = { Text("Month") },
+                    )
+                }
             }
         }
         item {
@@ -241,20 +285,111 @@ private fun WeeklySummaryContent(state: WeeklySummaryUiState.Ready) {
         }
         item {
             Text(
-                "${state.daysAtWaterGoal} of 7 days reached your water goal",
+                "${state.daysAtWaterGoal} of ${state.days.size} days reached your water goal",
                 modifier = Modifier.padding(horizontal = 20.dp),
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
-        item {
+        if (state.period.mode == SummaryMode.Month) {
+            item { MonthlyCalendar(state) }
+        } else {
+            item {
+                Text(
+                    "Daily activity",
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            items(state.days, key = { it.date }) { day -> WeeklyDayRow(day, state.settings) }
+        }
+    }
+}
+
+private fun periodLabel(state: WeeklySummaryUiState.Ready): String = if (state.period.mode == SummaryMode.Month) {
+    state.period.startDate.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
+} else {
+    "${state.period.startDate.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))} - ${state.period.endDate.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))}"
+}
+
+@Composable
+private fun MonthlyCalendar(state: WeeklySummaryUiState.Ready) {
+    var selectedMetric by remember { mutableStateOf(MonthlyMetric.Calories) }
+    val leadingEmptyDays = state.period.startDate.dayOfWeek.value - 1
+    val calendarDays = List<WeeklyDaySummary?>(leadingEmptyDays) { null } + state.days
+    Column(modifier = Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("Daily activity", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MonthlyMetric.entries.forEach { metric ->
+                FilterChip(
+                    selected = selectedMetric == metric,
+                    onClick = { selectedMetric = metric },
+                    label = { Text(metric.label) },
+                )
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth()) {
+            listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun").forEach { label ->
+                Text(
+                    label,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelSmall,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
+        }
+        calendarDays.chunked(7).forEach { week ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                week.forEach { day ->
+                    MonthlyDayCell(day, selectedMetric, state.settings, Modifier.weight(1f))
+                }
+                repeat(7 - week.size) { MonthlyDayCell(null, selectedMetric, state.settings, Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthlyDayCell(
+    day: WeeklyDaySummary?,
+    metric: MonthlyMetric,
+    settings: UserSettings,
+    modifier: Modifier = Modifier,
+) {
+    val cellShape = RoundedCornerShape(4.dp)
+    val hasActivity = day?.entryCount?.let { it > 0 } == true
+    Column(
+        modifier = modifier
+            .aspectRatio(0.9f)
+            .background(
+                color = if (hasActivity) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.surface,
+                shape = cellShape,
+            )
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, cellShape)
+            .padding(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(day?.date?.dayOfMonth?.toString().orEmpty(), style = MaterialTheme.typography.labelMedium)
+        if (day != null && day.entryCount > 0) {
             Text(
-                "Daily activity",
-                modifier = Modifier.padding(horizontal = 20.dp),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                metric.format(day, settings),
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
-        items(state.days, key = { it.date }) { day -> WeeklyDayRow(day, state.settings) }
+    }
+}
+
+private enum class MonthlyMetric(val label: String) {
+    Calories("Calories"),
+    Water("Water"),
+    Spend("Spend");
+
+    fun format(day: WeeklyDaySummary, settings: UserSettings): String = when (this) {
+        Calories -> "${day.calories} kcal"
+        Water -> "${day.waterMl} ml"
+        Spend -> formatMoney(day.spendMinor, settings.currencyCode)
     }
 }
 

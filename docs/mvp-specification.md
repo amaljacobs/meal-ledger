@@ -43,13 +43,16 @@ The form includes shortcuts for one and two configured cups plus 500 ml and 1,00
 
 ### Summary
 
-The initial summary view shows a week at a time:
+The summary supports calendar-aligned week and month views:
 
 - Daily calories, food spending, and water totals.
 - Number of days that reached the water goal.
-- Weekly food-spend total.
+- Total food spending and average daily water for the selected period.
+- Week mode runs Monday through Sunday and can navigate through past weeks.
+- Month mode uses a Monday-first calendar grid. Empty days remain visible without activity totals.
+- Forward navigation is disabled for the current period, so future weeks and months cannot be selected.
 
-Monthly reports, charts, exports, and budgets are out of scope for the MVP.
+Charts, exports, and budgets are out of scope for the MVP.
 
 ### Settings
 
