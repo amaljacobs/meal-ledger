@@ -16,12 +16,13 @@ This roadmap turns the MVP specification into a dependency-aware delivery order.
 | #4 | Food and water timeline rows open pre-filled editors; updates and confirmed deletions persist through Room and refresh the dashboard. |
 | #17 | Food timeline uses contextual meal icons and shows recorded protein while retaining entry correction access. |
 | #5 | Preferences DataStore persists currency, daily water goal, and cup size; the dashboard shows water-goal progress, and new food and water entries use the selected preferences. |
+| #3 | Seven-day summary shows daily totals, weekly food spending, average water intake, and water-goal days. |
 
 ## Current Work
 
-### #3 Weekly summary screen
+### #2 First internal test release
 
-Build the historical weekly view from persisted entries and the daily water goal. The view covers the current day and the preceding six calendar days, including days without entries.
+Prepare the signed release APK, privacy statement, and device test sign-off for the complete MVP.
 
 ## Delivery Order
 

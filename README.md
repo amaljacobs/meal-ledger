@@ -4,7 +4,7 @@ An Android app for recording food, water intake, and food spending.
 
 ## Project Status
 
-The Android baseline, Room persistence, Today dashboard, food and water logging, entry correction, food timeline presentation, and personal settings are complete. The weekly summary and internal test release remain.
+The Android baseline, local persistence, logging flows, settings, Today dashboard, and weekly summary are complete. Internal release signing and device test sign-off are in progress.
 
 ## Documentation
 
@@ -16,6 +16,8 @@ The Android baseline, Room persistence, Today dashboard, food and water logging,
 - [Milestones](docs/milestones.md)
 - [Project workflow](docs/project-workflow.md)
 - [Decision log](docs/decisions.md)
+- [Privacy policy](docs/privacy-policy.md)
+- [Internal test release checklist](docs/internal-test-release.md)
 
 ## Intended Stack
 
