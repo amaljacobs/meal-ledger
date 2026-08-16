@@ -12,12 +12,13 @@ This roadmap turns the MVP specification into a dependency-aware delivery order.
 | #13 | Optional protein storage, Room version-2 migration, exported schema, and device migration test completed. |
 | #6 | Today dashboard, local-day navigation, Room-backed daily totals, empty/loading states, and dashboard unit tests completed. |
 | #7 | Food-entry form with optional meal, portion, calories, protein, price, and note fields completed; validation and on-device saving verified. |
+| #9 | Water-entry form with 250 ml cup defaults, quick amounts, custom millilitre validation, and Room persistence completed. |
 
 ## Current Work
 
-### #9 Build the water-entry creation flow
+### #4 Add edit and delete actions
 
-Add the validated water form, quick amounts, and persistence flow.
+Allow food and water entries to be corrected or removed, with confirmation before deletion.
 
 ## Delivery Order
 
