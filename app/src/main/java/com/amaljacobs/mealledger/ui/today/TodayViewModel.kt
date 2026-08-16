@@ -87,7 +87,10 @@ class TodayViewModel(
     }
 
     fun showNextDay() {
-        selectedDate.value = selectedDate.value.plusDays(1)
+        val today = LocalDate.now(clock)
+        if (selectedDate.value.isBefore(today)) {
+            selectedDate.value = selectedDate.value.plusDays(1)
+        }
     }
 
     companion object {
