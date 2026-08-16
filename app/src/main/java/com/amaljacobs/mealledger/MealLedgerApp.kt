@@ -1,6 +1,8 @@
 package com.amaljacobs.mealledger
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +28,9 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Button
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -45,6 +50,9 @@ import com.amaljacobs.mealledger.ui.today.DailyTotals
 import com.amaljacobs.mealledger.ui.today.TimelineEntry
 import com.amaljacobs.mealledger.ui.today.TodayUiState
 import com.amaljacobs.mealledger.ui.today.TodayViewModel
+import com.amaljacobs.mealledger.ui.food.FoodEntryViewModel
+import com.amaljacobs.mealledger.ui.food.FoodEntryFormState
+import com.amaljacobs.mealledger.data.local.MealType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -105,14 +113,15 @@ fun MealLedgerApp(repository: MealLedgerRepository) {
             startDestination = AppDestination.Today.route,
             modifier = Modifier.padding(innerPadding),
         ) {
-            composable(AppDestination.Today.route) { TodayScreen(repository) }
+            composable(AppDestination.Today.route) { TodayScreen(repository) { navController.navigate("add-food") } }
+            composable("add-food") { FoodEntryScreen(repository) { navController.popBackStack() } }
             composable(AppDestination.Settings.route) { EmptyScreen(message = "Settings") }
         }
     }
 }
 
 @Composable
-private fun TodayScreen(repository: MealLedgerRepository) {
+private fun TodayScreen(repository: MealLedgerRepository, onAddFood: () -> Unit) {
     val viewModel: TodayViewModel = viewModel(factory = TodayViewModel.factory(repository))
     val state by viewModel.uiState.collectAsState()
     when (state) {
@@ -121,6 +130,7 @@ private fun TodayScreen(repository: MealLedgerRepository) {
             state = state as TodayUiState.Ready,
             onPreviousDay = viewModel::showPreviousDay,
             onNextDay = viewModel::showNextDay,
+            onAddFood = onAddFood,
         )
     }
 }
@@ -130,6 +140,7 @@ fun TodayScreenContent(
     state: TodayUiState.Ready,
     onPreviousDay: () -> Unit,
     onNextDay: () -> Unit,
+    onAddFood: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -143,6 +154,7 @@ fun TodayScreenContent(
             )
         }
         item { DailyTotalsRow(state.totals) }
+        item { Button(onClick = onAddFood, modifier = Modifier.padding(horizontal = 20.dp)) { Text("Add food") } }
         item {
             Text(
                 text = "Activity",
@@ -160,6 +172,40 @@ fun TodayScreenContent(
         }
     }
 }
+
+@Composable
+private fun FoodEntryScreen(repository: MealLedgerRepository, onSaved: () -> Unit) {
+    val viewModel: FoodEntryViewModel = viewModel(factory = FoodEntryViewModel.factory(repository, onSaved))
+    val state by viewModel.state.collectAsState()
+    LazyColumn(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item { Text("Add food", style = MaterialTheme.typography.headlineSmall) }
+        item { FoodField("Food name", state.name) { value -> viewModel.update { it.copy(name = value) } } }
+        item { FoodField("Portion", state.portionNote) { value -> viewModel.update { it.copy(portionNote = value) } } }
+        item { FoodField("Calories", state.calories) { value -> viewModel.update { it.copy(calories = value) } } }
+        item { FoodField("Protein (g)", state.proteinGrams) { value -> viewModel.update { it.copy(proteinGrams = value) } } }
+        item { FoodField("Price (INR)", state.price) { value -> viewModel.update { it.copy(price = value) } } }
+        item { FoodField("Note", state.note) { value -> viewModel.update { it.copy(note = value) } } }
+        item {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                MealType.entries.forEach { type ->
+                    FilterChip(
+                        selected = state.mealType == type,
+                        onClick = { viewModel.update { it.copy(mealType = type) } },
+                        label = { Text(type.name.lowercase().replaceFirstChar(Char::uppercase)) },
+                    )
+                }
+            }
+        }
+        state.error?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error) } }
+        item { Button(onClick = viewModel::save, enabled = !state.saving) { Text(if (state.saving) "Saving" else "Save") } }
+    }
+}
+
+@Composable
+private fun FoodField(label: String, value: String, onValueChange: (String) -> Unit) { OutlinedTextField(value = value, onValueChange = onValueChange, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), singleLine = label != "Note") }
 
 @Composable
 private fun DateSelector(
