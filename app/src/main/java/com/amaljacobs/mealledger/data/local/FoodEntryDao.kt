@@ -11,6 +11,9 @@ import java.time.Instant
 
 @Dao
 interface FoodEntryDao {
+    @Query("SELECT * FROM food_entries WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): FoodEntryEntity?
+
     @Query(
         """
         SELECT * FROM food_entries

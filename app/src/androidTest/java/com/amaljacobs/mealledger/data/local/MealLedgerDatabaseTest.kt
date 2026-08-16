@@ -91,6 +91,41 @@ class MealLedgerDatabaseTest {
     }
 
     @Test
+    fun entriesCanBeUpdatedAndDeleted() = runBlocking {
+        val occurredAt = Instant.parse("2026-08-16T10:30:00Z")
+        val foodId = repository.addFoodEntry(
+            FoodEntryEntity(
+                name = "Toast",
+                consumedAt = occurredAt,
+                createdAt = occurredAt,
+                updatedAt = occurredAt,
+            ),
+        )
+        val waterId = repository.addWaterEntry(
+            WaterEntryEntity(
+                amountMl = 250,
+                consumedAt = occurredAt,
+                createdAt = occurredAt,
+                updatedAt = occurredAt,
+            ),
+        )
+
+        val food = requireNotNull(repository.getFoodEntry(foodId))
+        val water = requireNotNull(repository.getWaterEntry(waterId))
+        repository.updateFoodEntry(food.copy(name = "Avocado toast"))
+        repository.updateWaterEntry(water.copy(amountMl = 500))
+
+        assertEquals("Avocado toast", repository.getFoodEntry(foodId)?.name)
+        assertEquals(500, repository.getWaterEntry(waterId)?.amountMl)
+
+        repository.deleteFoodEntry(requireNotNull(repository.getFoodEntry(foodId)))
+        repository.deleteWaterEntry(requireNotNull(repository.getWaterEntry(waterId)))
+
+        assertEquals(null, repository.getFoodEntry(foodId))
+        assertEquals(null, repository.getWaterEntry(waterId))
+    }
+
+    @Test
     fun migrationFromVersion1PreservesExistingFoodEntries() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val version1Database = context.openOrCreateDatabase(
