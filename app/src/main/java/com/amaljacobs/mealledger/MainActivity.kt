@@ -6,6 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import com.amaljacobs.mealledger.ui.today.DailyTotals
+import com.amaljacobs.mealledger.ui.today.TodayUiState
 import com.amaljacobs.mealledger.ui.theme.MealLedgerTheme
 
 class MainActivity : ComponentActivity() {
@@ -14,7 +16,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MealLedgerTheme {
-                MealLedgerApp()
+                MealLedgerApp(repository = (application as MealLedgerApplication).repository)
             }
         }
     }
@@ -24,6 +26,14 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MealLedgerAppPreview() {
     MealLedgerTheme {
-        MealLedgerApp()
+        TodayScreenContent(
+            state = TodayUiState.Ready(
+                selectedDate = java.time.LocalDate.now(),
+                entries = emptyList(),
+                totals = DailyTotals(),
+            ),
+            onPreviousDay = {},
+            onNextDay = {},
+        )
     }
 }
