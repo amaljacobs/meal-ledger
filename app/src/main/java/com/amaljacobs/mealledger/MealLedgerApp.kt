@@ -311,10 +311,20 @@ private fun periodLabel(state: WeeklySummaryUiState.Ready): String = if (state.p
 
 @Composable
 private fun MonthlyCalendar(state: WeeklySummaryUiState.Ready) {
+    var selectedMetric by remember { mutableStateOf(MonthlyMetric.Calories) }
     val leadingEmptyDays = state.period.startDate.dayOfWeek.value - 1
     val calendarDays = List<WeeklyDaySummary?>(leadingEmptyDays) { null } + state.days
     Column(modifier = Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("Daily activity", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MonthlyMetric.entries.forEach { metric ->
+                FilterChip(
+                    selected = selectedMetric == metric,
+                    onClick = { selectedMetric = metric },
+                    label = { Text(metric.label) },
+                )
+            }
+        }
         Row(modifier = Modifier.fillMaxWidth()) {
             listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun").forEach { label ->
                 Text(
@@ -328,25 +338,46 @@ private fun MonthlyCalendar(state: WeeklySummaryUiState.Ready) {
         calendarDays.chunked(7).forEach { week ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 week.forEach { day ->
-                    MonthlyDayCell(day, Modifier.weight(1f))
+                    MonthlyDayCell(day, selectedMetric, state.settings, Modifier.weight(1f))
                 }
-                repeat(7 - week.size) { MonthlyDayCell(null, Modifier.weight(1f)) }
+                repeat(7 - week.size) { MonthlyDayCell(null, selectedMetric, state.settings, Modifier.weight(1f)) }
             }
         }
     }
 }
 
 @Composable
-private fun MonthlyDayCell(day: WeeklyDaySummary?, modifier: Modifier = Modifier) {
+private fun MonthlyDayCell(
+    day: WeeklyDaySummary?,
+    metric: MonthlyMetric,
+    settings: UserSettings,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier.aspectRatio(0.9f).padding(4.dp),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(day?.date?.dayOfMonth?.toString().orEmpty(), style = MaterialTheme.typography.labelMedium)
         if (day != null && day.entryCount > 0) {
-            Text("${day.calories} kcal", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${day.waterMl} ml", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                metric.format(day, settings),
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
+    }
+}
+
+private enum class MonthlyMetric(val label: String) {
+    Calories("Calories"),
+    Water("Water"),
+    Spend("Spend");
+
+    fun format(day: WeeklyDaySummary, settings: UserSettings): String = when (this) {
+        Calories -> "${day.calories} kcal"
+        Water -> "${day.waterMl} ml"
+        Spend -> formatMoney(day.spendMinor, settings.currencyCode)
     }
 }
 
