@@ -14,12 +14,13 @@ This roadmap turns the MVP specification into a dependency-aware delivery order.
 | #7 | Food-entry form with optional meal, portion, calories, protein, price, and note fields completed; validation and on-device saving verified. |
 | #9 | Water-entry form with 250 ml cup defaults, quick amounts, custom millilitre validation, and Room persistence completed. |
 | #4 | Food and water timeline rows open pre-filled editors; updates and confirmed deletions persist through Room and refresh the dashboard. |
+| #17 | Food timeline uses contextual meal icons and shows recorded protein while retaining entry correction access. |
 
 ## Current Work
 
-### #17 Improve food timeline presentation
+### #5 Add settings for currency and water goal
 
-Show a contextual meal icon and optional protein in food timeline rows while keeping corrected-entry actions easy to reach.
+Persist the small set of personal preferences needed to make water logging and spending totals meaningful.
 
 ## Delivery Order
 
