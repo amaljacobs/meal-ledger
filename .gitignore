@@ -1,5 +1,6 @@
 # Android / Gradle
 .gradle/
+.kotlin/
 build/
 local.properties
 *.apk
@@ -11,4 +12,3 @@ local.properties
 
 # Operating system
 .DS_Store
-
