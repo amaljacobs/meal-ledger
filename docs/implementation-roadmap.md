@@ -10,12 +10,13 @@ This roadmap turns the MVP specification into a dependency-aware delivery order.
 | #1 | Android project and navigation foundation completed. |
 | #10 | Room version-1 persistence, repository, exported schema, and device tests completed. |
 | #13 | Optional protein storage, Room version-2 migration, exported schema, and device migration test completed. |
+| #6 | Today dashboard, local-day navigation, Room-backed daily totals, empty/loading states, and dashboard unit tests completed. |
 
 ## Current Work
 
-### #6 Build the Today screen with daily totals
+### #7 Build the food-entry creation flow
 
-Show today's food and water entries, empty states, and daily calorie, spend, and hydration totals from the local database.
+Add the validated food form, persist entries, and return to the Today dashboard after saving.
 
 ## Delivery Order
 
