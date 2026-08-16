@@ -9,12 +9,13 @@ This roadmap turns the MVP specification into a dependency-aware delivery order.
 | #8 | MVP screens, flows, data model, and technical decisions documented. |
 | #1 | Android project and navigation foundation completed. |
 | #10 | Room version-1 persistence, repository, exported schema, and device tests completed. |
+| #13 | Optional protein storage, Room version-2 migration, exported schema, and device migration test completed. |
 
 ## Current Work
 
-### #13 Add optional protein to food entries
+### #6 Build the Today screen with daily totals
 
-Add optional whole-gram protein storage through a Room version-2 migration. Preserve version-1 food and water data, update the exported schema, and add migration coverage before any entry screens rely on the extension.
+Show today's food and water entries, empty states, and daily calorie, spend, and hydration totals from the local database.
 
 ## Delivery Order
 

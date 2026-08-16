@@ -17,6 +17,7 @@ data class FoodEntryEntity(
     @ColumnInfo(name = "meal_type") val mealType: MealType? = null,
     @ColumnInfo(name = "portion_note") val portionNote: String? = null,
     val calories: Int? = null,
+    @ColumnInfo(name = "protein_grams") val proteinGrams: Int? = null,
     @ColumnInfo(name = "price_minor") val priceMinor: Long? = null,
     @ColumnInfo(name = "currency_code") val currencyCode: String? = null,
     val note: String? = null,
