@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.BreakfastDining
 import androidx.compose.material.icons.outlined.DinnerDining
 import androidx.compose.material.icons.outlined.Fastfood
@@ -162,10 +163,10 @@ fun MealLedgerApp(
                 )
             }
             composable("add-food") {
-                FoodEntryScreen(repository, settingsRepository) { navController.popBackStack() }
+                FoodEntryScreen(repository, settingsRepository, onSaved = { navController.popBackStack() }, onNavigateBack = { navController.popBackStack() })
             }
             composable("add-water") {
-                WaterEntryScreen(repository, settingsRepository) { navController.popBackStack() }
+                WaterEntryScreen(repository, settingsRepository, onSaved = { navController.popBackStack() }, onNavigateBack = { navController.popBackStack() })
             }
             composable(
                 route = "edit-food/{entryId}",
@@ -176,6 +177,7 @@ fun MealLedgerApp(
                     settingsRepository = settingsRepository,
                     entryId = entry.arguments?.getLong("entryId"),
                     onSaved = { navController.popBackStack() },
+                    onNavigateBack = { navController.popBackStack() },
                 )
             }
             composable(
@@ -187,6 +189,7 @@ fun MealLedgerApp(
                     settingsRepository = settingsRepository,
                     entryId = entry.arguments?.getLong("entryId"),
                     onSaved = { navController.popBackStack() },
+                    onNavigateBack = { navController.popBackStack() },
                 )
             }
             composable(AppDestination.Settings.route) { SettingsScreen(settingsRepository) }
@@ -364,6 +367,7 @@ private fun FoodEntryScreen(
     settingsRepository: SettingsRepository,
     entryId: Long? = null,
     onSaved: () -> Unit,
+    onNavigateBack: () -> Unit,
 ) {
     val viewModel: FoodEntryViewModel = viewModel(
         factory = FoodEntryViewModel.factory(repository, settingsRepository, onSaved, entryId),
@@ -372,7 +376,12 @@ private fun FoodEntryScreen(
     val settings by settingsRepository.settings.collectAsState(initial = UserSettings())
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     LazyColumn(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { Text(if (entryId == null) "Add food" else "Edit food", style = MaterialTheme.typography.headlineSmall) }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onNavigateBack) { Icon(Icons.Outlined.ArrowBack, contentDescription = "Back") }
+                Text(if (entryId == null) "Add food" else "Edit food", style = MaterialTheme.typography.headlineSmall)
+            }
+        }
         item { FoodField("Food name", state.name) { value -> viewModel.update { it.copy(name = value) } } }
         item { FoodField("Portion", state.portionNote) { value -> viewModel.update { it.copy(portionNote = value) } } }
         item { FoodField("Calories", state.calories) { value -> viewModel.update { it.copy(calories = value) } } }
@@ -414,13 +423,19 @@ private fun WaterEntryScreen(
     settingsRepository: SettingsRepository,
     entryId: Long? = null,
     onSaved: () -> Unit,
+    onNavigateBack: () -> Unit,
 ) {
     val viewModel: WaterEntryViewModel = viewModel(factory = WaterEntryViewModel.factory(repository, onSaved, entryId))
     val state by viewModel.state.collectAsState()
     val settings by settingsRepository.settings.collectAsState(initial = UserSettings())
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     LazyColumn(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Text(if (entryId == null) "Add water" else "Edit water", style = MaterialTheme.typography.headlineSmall) }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onNavigateBack) { Icon(Icons.Outlined.ArrowBack, contentDescription = "Back") }
+                Text(if (entryId == null) "Add water" else "Edit water", style = MaterialTheme.typography.headlineSmall)
+            }
+        }
         item {
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -488,7 +503,7 @@ private fun DateSelector(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
         )
-        IconButton(onClick = onNextDay) {
+        IconButton(onClick = onNextDay, enabled = date.isBefore(LocalDate.now())) {
             Icon(Icons.Outlined.ChevronRight, contentDescription = "Next day")
         }
     }
