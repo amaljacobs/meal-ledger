@@ -26,6 +26,7 @@ Optional fields:
 - Meal type: breakfast, lunch, dinner, snack, or other
 - Portion note, such as `2 chapatis` or `1 bowl`
 - Estimated calories
+- Protein in grams
 - Price
 - Note
 
@@ -93,6 +94,7 @@ All timestamps are stored as an instant in UTC and rendered in the device's curr
 | mealType | MealType? | Optional enum |
 | portionNote | String? | Optional; maximum 200 characters |
 | calories | Int? | Optional; 0 or greater |
+| proteinGrams | Int? | Optional whole grams; 0 or greater |
 | priceMinor | Long? | Optional; stored in minor currency units; 0 or greater |
 | currencyCode | String | ISO 4217 code captured when a price is saved |
 | note | String? | Optional; maximum 500 characters |
@@ -123,6 +125,7 @@ One locally stored settings record.
 
 - Daily food spending: sum of `priceMinor` for food entries with a price.
 - Daily calories: sum of `calories` for food entries with calories.
+- Protein is recorded per food entry in the MVP; daily protein totals are deferred until there is a defined summary use case.
 - Daily water: sum of `amountMl` for water entries.
 - Water progress: `daily water / daily water goal`, shown as no more than 100% in the progress indicator while the actual total remains visible.
 - Entries with missing calories or price are excluded from that particular total; they are never treated as zero.
@@ -130,6 +133,8 @@ One locally stored settings record.
 ## Explicit MVP Boundaries
 
 - A food entry represents a single consumed item or meal. Recipe management is not included.
+- Protein is the only macronutrient tracked in the MVP. Carbohydrates and fats are deferred until they have a clear reporting use case.
 - Currency changes affect new price entries; existing price entries retain the currency used when saved.
+- Water is stored in millilitres. The logging UI offers cup and bottle shortcuts that convert to millilitres, while a custom millilitre amount remains available.
 - The app does not give health, hydration, or nutrition advice. Goals are user-controlled reference values.
 - Data remains on-device. Uninstalling the app may remove all entries.

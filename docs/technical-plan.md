@@ -34,6 +34,8 @@ ViewModels expose immutable UI state through Kotlin `StateFlow`. Compose screens
 - Store money in minor units (`Long`), never `Double`, to prevent rounding errors.
 - Store instants in UTC; convert to local dates only for display and day-based queries.
 - Schema changes require Room migrations once data can exist outside development devices.
+- Keep water in millilitres in persistence. User-facing cup and bottle shortcuts convert to millilitres using a configurable cup size.
+- The first schema extension, optional protein grams, advances Room from version 1 using an explicit migration and an exported schema test.
 
 ## Initial Dependencies
 
