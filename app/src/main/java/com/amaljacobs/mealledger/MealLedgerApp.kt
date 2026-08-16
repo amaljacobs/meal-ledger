@@ -53,6 +53,7 @@ import com.amaljacobs.mealledger.ui.today.TodayViewModel
 import com.amaljacobs.mealledger.ui.food.FoodEntryViewModel
 import com.amaljacobs.mealledger.ui.food.FoodEntryFormState
 import com.amaljacobs.mealledger.data.local.MealType
+import com.amaljacobs.mealledger.ui.water.WaterEntryViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -113,15 +114,26 @@ fun MealLedgerApp(repository: MealLedgerRepository) {
             startDestination = AppDestination.Today.route,
             modifier = Modifier.padding(innerPadding),
         ) {
-            composable(AppDestination.Today.route) { TodayScreen(repository) { navController.navigate("add-food") } }
+            composable(AppDestination.Today.route) {
+                TodayScreen(
+                    repository = repository,
+                    onAddFood = { navController.navigate("add-food") },
+                    onAddWater = { navController.navigate("add-water") },
+                )
+            }
             composable("add-food") { FoodEntryScreen(repository) { navController.popBackStack() } }
+            composable("add-water") { WaterEntryScreen(repository) { navController.popBackStack() } }
             composable(AppDestination.Settings.route) { EmptyScreen(message = "Settings") }
         }
     }
 }
 
 @Composable
-private fun TodayScreen(repository: MealLedgerRepository, onAddFood: () -> Unit) {
+private fun TodayScreen(
+    repository: MealLedgerRepository,
+    onAddFood: () -> Unit,
+    onAddWater: () -> Unit,
+) {
     val viewModel: TodayViewModel = viewModel(factory = TodayViewModel.factory(repository))
     val state by viewModel.uiState.collectAsState()
     when (state) {
@@ -131,6 +143,7 @@ private fun TodayScreen(repository: MealLedgerRepository, onAddFood: () -> Unit)
             onPreviousDay = viewModel::showPreviousDay,
             onNextDay = viewModel::showNextDay,
             onAddFood = onAddFood,
+            onAddWater = onAddWater,
         )
     }
 }
@@ -141,6 +154,7 @@ fun TodayScreenContent(
     onPreviousDay: () -> Unit,
     onNextDay: () -> Unit,
     onAddFood: () -> Unit = {},
+    onAddWater: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -154,7 +168,15 @@ fun TodayScreenContent(
             )
         }
         item { DailyTotalsRow(state.totals) }
-        item { Button(onClick = onAddFood, modifier = Modifier.padding(horizontal = 20.dp)) { Text("Add food") } }
+        item {
+            Row(
+                modifier = Modifier.padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(onClick = onAddFood) { Text("Add food") }
+                Button(onClick = onAddWater) { Text("Add water") }
+            }
+        }
         item {
             Text(
                 text = "Activity",
@@ -198,6 +220,40 @@ private fun FoodEntryScreen(repository: MealLedgerRepository, onSaved: () -> Uni
                     )
                 }
             }
+        }
+        state.error?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error) } }
+        item { Button(onClick = viewModel::save, enabled = !state.saving) { Text(if (state.saving) "Saving" else "Save") } }
+    }
+}
+
+@Composable
+private fun WaterEntryScreen(repository: MealLedgerRepository, onSaved: () -> Unit) {
+    val viewModel: WaterEntryViewModel = viewModel(factory = WaterEntryViewModel.factory(repository, onSaved))
+    val state by viewModel.state.collectAsState()
+    LazyColumn(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { Text("Add water", style = MaterialTheme.typography.headlineSmall) }
+        item {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf("1 cup" to 250, "2 cups" to 500, "500 ml" to 500, "1,000 ml" to 1000).forEach { (label, amount) ->
+                    FilterChip(
+                        selected = state.amountMl == amount.toString(),
+                        onClick = { viewModel.setAmount(amount.toString()) },
+                        label = { Text(label) },
+                    )
+                }
+            }
+        }
+        item {
+            OutlinedTextField(
+                value = state.amountMl,
+                onValueChange = viewModel::setAmount,
+                label = { Text("Amount (ml)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
         }
         state.error?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error) } }
         item { Button(onClick = viewModel::save, enabled = !state.saving) { Text(if (state.saving) "Saving" else "Save") } }
