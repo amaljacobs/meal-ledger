@@ -24,6 +24,8 @@ class SettingsRepository(private val context: Context) : SettingsStore {
         UserSettings(
             currencyCode = preferences[CurrencyCodeKey] ?: defaultCurrencyCode(),
             dailyWaterGoalMl = preferences[DailyWaterGoalKey] ?: 2_500,
+            dailyCalorieGoal = preferences[DailyCalorieGoalKey],
+            dailyProteinGoalGrams = preferences[DailyProteinGoalKey],
             cupSizeMl = preferences[CupSizeKey] ?: 250,
         )
     }
@@ -32,6 +34,8 @@ class SettingsRepository(private val context: Context) : SettingsStore {
         context.settingsDataStore.edit { preferences ->
             preferences[CurrencyCodeKey] = settings.currencyCode
             preferences[DailyWaterGoalKey] = settings.dailyWaterGoalMl
+            settings.dailyCalorieGoal?.let { preferences[DailyCalorieGoalKey] = it } ?: preferences.remove(DailyCalorieGoalKey)
+            settings.dailyProteinGoalGrams?.let { preferences[DailyProteinGoalKey] = it } ?: preferences.remove(DailyProteinGoalKey)
             preferences[CupSizeKey] = settings.cupSizeMl
         }
     }
@@ -43,6 +47,8 @@ class SettingsRepository(private val context: Context) : SettingsStore {
     private companion object {
         val CurrencyCodeKey = stringPreferencesKey("currency_code")
         val DailyWaterGoalKey = intPreferencesKey("daily_water_goal_ml")
+        val DailyCalorieGoalKey = intPreferencesKey("daily_calorie_goal")
+        val DailyProteinGoalKey = intPreferencesKey("daily_protein_goal_grams")
         val CupSizeKey = intPreferencesKey("cup_size_ml")
     }
 }

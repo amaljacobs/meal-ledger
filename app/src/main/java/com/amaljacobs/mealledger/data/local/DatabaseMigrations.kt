@@ -10,5 +10,21 @@ object DatabaseMigrations {
         }
     }
 
-    val all = arrayOf(MIGRATION_1_2)
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS daily_goals (
+                    effective_date TEXT NOT NULL,
+                    daily_water_goal_ml INTEGER NOT NULL,
+                    daily_calorie_goal INTEGER,
+                    daily_protein_goal_grams INTEGER,
+                    PRIMARY KEY(effective_date)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
+
+    val all = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
 }

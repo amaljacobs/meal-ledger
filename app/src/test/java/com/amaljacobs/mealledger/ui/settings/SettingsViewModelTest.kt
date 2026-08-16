@@ -2,6 +2,9 @@ package com.amaljacobs.mealledger.ui.settings
 
 import com.amaljacobs.mealledger.data.settings.SettingsStore
 import com.amaljacobs.mealledger.data.settings.UserSettings
+import com.amaljacobs.mealledger.data.goals.DailyGoalStore
+import com.amaljacobs.mealledger.data.local.DailyGoalEntity
+import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -34,7 +37,7 @@ class SettingsViewModelTest {
     @Test
     fun saveCompletesAndAllowsAnotherUpdate() = runTest(dispatcher) {
         val store = FakeSettingsStore()
-        val viewModel = SettingsViewModel(store)
+        val viewModel = SettingsViewModel(store, FakeDailyGoalStore())
         runCurrent()
 
         viewModel.update { it.copy(dailyWaterGoalMl = "3000") }
@@ -54,7 +57,7 @@ class SettingsViewModelTest {
 
     @Test
     fun saveFailureReenablesTheFormAndShowsAnError() = runTest(dispatcher) {
-        val viewModel = SettingsViewModel(FakeSettingsStore(throwOnUpdate = true))
+        val viewModel = SettingsViewModel(FakeSettingsStore(throwOnUpdate = true), FakeDailyGoalStore())
         runCurrent()
 
         viewModel.save()
@@ -62,6 +65,22 @@ class SettingsViewModelTest {
 
         assertFalse(viewModel.state.value.saving)
         assertEquals("Could not save settings. Please try again.", viewModel.state.value.error)
+    }
+}
+
+private class FakeDailyGoalStore : DailyGoalStore {
+    private val values = MutableStateFlow<List<DailyGoalEntity>>(emptyList())
+    override val goals: Flow<List<DailyGoalEntity>> = values
+
+    override suspend fun ensureBaseline(settings: UserSettings) = Unit
+
+    override suspend fun saveForToday(settings: UserSettings, today: LocalDate) {
+        values.value = values.value + DailyGoalEntity(
+            effectiveDate = today.toString(),
+            dailyWaterGoalMl = settings.dailyWaterGoalMl,
+            dailyCalorieGoal = settings.dailyCalorieGoal,
+            dailyProteinGoalGrams = settings.dailyProteinGoalGrams,
+        )
     }
 }
 

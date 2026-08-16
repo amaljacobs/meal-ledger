@@ -9,7 +9,7 @@ This document defines the first release behavior before implementation begins.
 The default screen shows the selected day's totals and chronological activity.
 
 - Header: selected date, with previous-day, next-day, and date-picker actions.
-- Summary: food calories, food spending, water amount, and water-goal progress.
+- Summary: food calories, protein, food spending, water amount, and configured-goal progress.
 - Quick actions: add food and add water.
 - Timeline: food and water entries ordered by consumed time, newest first when times are equal. Food rows show a contextual meal-type icon when set and show optional protein when recorded.
 - Empty state: clear actions to add the first food or water entry.
@@ -46,8 +46,8 @@ The form includes shortcuts for one and two configured cups plus 500 ml and 1,00
 The summary supports calendar-aligned week and month views:
 
 - Daily calories, food spending, and water totals.
-- Number of days that reached the water goal.
-- Total food spending and average daily water for the selected period.
+- Number of days that reached configured water, calorie, and protein goals when those goals are set.
+- Total food spending, protein, and average daily water for the selected period.
 - Week mode runs Monday through Sunday and can navigate through past weeks.
 - Month mode uses a Monday-first calendar grid. Empty days remain visible without activity totals.
 - Forward navigation is disabled for the current period, so future weeks and months cannot be selected.
@@ -58,9 +58,11 @@ Charts, exports, and budgets are out of scope for the MVP.
 
 - Currency code, defaulting to the device locale when available.
 - Daily water goal in millilitres, default 2,500 ml.
+- Optional daily calorie goal in kilocalories.
+- Optional daily protein goal in grams.
 - Default cup size in millilitres, default 250 ml, used by water shortcuts.
 
-An optional calorie target and About section are deferred until they have a defined use in the MVP.
+Goal changes take effect on the local date they are saved and do not change the targets shown for earlier dates.
 
 ## User Flows
 
@@ -123,15 +125,26 @@ One locally stored settings record.
 | --- | --- | --- |
 | currencyCode | String | ISO 4217 code |
 | dailyWaterGoalMl | Int | Positive whole number |
+| dailyCalorieGoal | Int? | Optional positive whole number |
+| dailyProteinGoalGrams | Int? | Optional positive whole number |
 | cupSizeMl | Int | Positive whole number; default 250 |
+
+### DailyGoal
+
+| Field | Type | Rules |
+| --- | --- | --- |
+| effectiveDate | LocalDate | Local calendar date at which this snapshot applies; primary key |
+| dailyWaterGoalMl | Int | Required positive whole number |
+| dailyCalorieGoal | Int? | Optional positive whole number |
+| dailyProteinGoalGrams | Int? | Optional positive whole number |
 
 ## Derived Values
 
 - Daily food spending: sum of `priceMinor` for food entries with a price.
 - Daily calories: sum of `calories` for food entries with calories.
-- Protein is recorded per food entry in the MVP; daily protein totals are deferred until there is a defined summary use case.
+- Daily protein: sum of `proteinGrams` for food entries with protein recorded.
 - Daily water: sum of `amountMl` for water entries.
-- Water progress: `daily water / daily water goal`, shown as no more than 100% in the progress indicator while the actual total remains visible.
+- Goal progress uses the goal snapshot effective on the local date being viewed. Water, calorie, and protein progress indicators are capped at 100% while actual totals remain visible.
 - Entries with missing calories or price are excluded from that particular total; they are never treated as zero.
 
 ## Explicit MVP Boundaries
@@ -141,4 +154,5 @@ One locally stored settings record.
 - Currency changes affect new price entries; existing price entries retain the currency used when saved.
 - Water is stored in millilitres. The logging UI offers cup and bottle shortcuts that convert to millilitres, while a custom millilitre amount remains available.
 - The app does not give health, hydration, or nutrition advice. Goals are user-controlled reference values.
+- Goal snapshots are retained locally so changing a goal today does not rewrite historical progress.
 - Data remains on-device. Uninstalling the app may remove all entries.

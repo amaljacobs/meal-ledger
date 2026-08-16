@@ -10,6 +10,7 @@ import com.amaljacobs.mealledger.ui.today.DailyTotals
 import com.amaljacobs.mealledger.ui.today.TodayUiState
 import com.amaljacobs.mealledger.ui.theme.MealLedgerTheme
 import com.amaljacobs.mealledger.data.settings.UserSettings
+import com.amaljacobs.mealledger.data.goals.DailyGoal
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -20,6 +21,7 @@ class MainActivity : ComponentActivity() {
                 MealLedgerApp(
                     repository = (application as MealLedgerApplication).repository,
                     settingsRepository = (application as MealLedgerApplication).settingsRepository,
+                    dailyGoalStore = (application as MealLedgerApplication).dailyGoalRepository,
                 )
             }
         }
@@ -35,6 +37,7 @@ fun MealLedgerAppPreview() {
                 selectedDate = java.time.LocalDate.now(),
                 entries = emptyList(),
                 totals = DailyTotals(),
+                goal = DailyGoal(waterMl = 2_500, calories = null, proteinGrams = null),
                 settings = UserSettings(),
             ),
             onPreviousDay = {},

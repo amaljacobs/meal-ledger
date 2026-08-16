@@ -200,4 +200,31 @@ class MealLedgerDatabaseTest {
         }
         migratedDatabase.close()
     }
+
+    @Test
+    fun migrationFromVersion2CreatesDailyGoalsWithoutChangingEntries() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val version2Database = context.openOrCreateDatabase(migrationDatabaseName, Context.MODE_PRIVATE, null)
+        version2Database.execSQL("CREATE TABLE food_entries (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, consumed_at INTEGER NOT NULL, meal_type TEXT, portion_note TEXT, calories INTEGER, protein_grams INTEGER, price_minor INTEGER, currency_code TEXT, note TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
+        version2Database.execSQL("CREATE TABLE water_entries (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, amount_ml INTEGER NOT NULL, consumed_at INTEGER NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
+        version2Database.execSQL("CREATE INDEX index_food_entries_consumed_at ON food_entries (consumed_at)")
+        version2Database.execSQL("CREATE INDEX index_water_entries_consumed_at ON water_entries (consumed_at)")
+        version2Database.execSQL("INSERT INTO water_entries (id, amount_ml, consumed_at, created_at, updated_at) VALUES (1, 500, 1786942800000, 1786942800000, 1786942800000)")
+        version2Database.version = 2
+        version2Database.close()
+
+        val migratedDatabase = Room.databaseBuilder(context, MealLedgerDatabase::class.java, migrationDatabaseName)
+            .addMigrations(*DatabaseMigrations.all)
+            .build()
+
+        migratedDatabase.openHelper.writableDatabase.query("SELECT amount_ml FROM water_entries WHERE id = 1").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(500, cursor.getInt(0))
+        }
+        migratedDatabase.openHelper.writableDatabase.query("SELECT COUNT(*) FROM daily_goals").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        migratedDatabase.close()
+    }
 }

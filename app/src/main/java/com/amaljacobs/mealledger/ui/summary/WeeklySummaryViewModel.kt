@@ -8,6 +8,10 @@ import com.amaljacobs.mealledger.data.local.WaterEntryEntity
 import com.amaljacobs.mealledger.data.repository.MealLedgerRepository
 import com.amaljacobs.mealledger.data.settings.SettingsRepository
 import com.amaljacobs.mealledger.data.settings.UserSettings
+import com.amaljacobs.mealledger.data.goals.DailyGoalStore
+import com.amaljacobs.mealledger.data.goals.goalForDate
+import com.amaljacobs.mealledger.data.goals.toDailyGoal
+import com.amaljacobs.mealledger.data.local.DailyGoalEntity
 import java.time.Clock
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -47,6 +51,7 @@ fun summaryPeriodFor(mode: SummaryMode, date: LocalDate): SummaryPeriod = when (
 data class WeeklyDaySummary(
     val date: LocalDate,
     val calories: Int = 0,
+    val proteinGrams: Int = 0,
     val spendMinor: Long = 0,
     val waterMl: Int = 0,
     val entryCount: Int = 0,
@@ -59,9 +64,14 @@ sealed interface WeeklySummaryUiState {
         val period: SummaryPeriod,
         val days: List<WeeklyDaySummary>,
         val totalCalories: Int,
+        val totalProteinGrams: Int,
         val totalSpendMinor: Long,
         val averageWaterMl: Int,
         val daysAtWaterGoal: Int,
+        val daysAtCalorieGoal: Int?,
+        val calorieGoalDayCount: Int,
+        val daysAtProteinGoal: Int?,
+        val proteinGoalDayCount: Int,
         val settings: UserSettings,
         val canNavigateForward: Boolean,
     ) : WeeklySummaryUiState
@@ -71,6 +81,7 @@ sealed interface WeeklySummaryUiState {
 class WeeklySummaryViewModel(
     private val repository: MealLedgerRepository,
     private val settingsRepository: SettingsRepository,
+    private val dailyGoalStore: DailyGoalStore,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private val mode = MutableStateFlow(SummaryMode.Week)
@@ -84,8 +95,9 @@ class WeeklySummaryViewModel(
             repository.observeFoodEntries(startInstant, endInstant),
             repository.observeWaterEntries(startInstant, endInstant),
             settingsRepository.settings,
-        ) { foodEntries, waterEntries, settings ->
-            summaryForPeriod(selectedPeriod, foodEntries, waterEntries, settings, clock).copy(
+            dailyGoalStore.goals,
+        ) { foodEntries, waterEntries, settings, goals ->
+            summaryForPeriod(selectedPeriod, foodEntries, waterEntries, settings, goals, clock).copy(
                 canNavigateForward = selectedPeriod.startDate < summaryPeriodFor(selectedPeriod.mode, LocalDate.now(clock)).startDate,
             )
         }
@@ -120,11 +132,12 @@ class WeeklySummaryViewModel(
         fun factory(
             repository: MealLedgerRepository,
             settingsRepository: SettingsRepository,
+            dailyGoalStore: DailyGoalStore,
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    WeeklySummaryViewModel(repository, settingsRepository) as T
+                    WeeklySummaryViewModel(repository, settingsRepository, dailyGoalStore) as T
             }
     }
 }
@@ -134,6 +147,7 @@ fun summaryForPeriod(
     foodEntries: List<FoodEntryEntity>,
     waterEntries: List<WaterEntryEntity>,
     settings: UserSettings,
+    goals: List<DailyGoalEntity>,
     clock: Clock,
 ): WeeklySummaryUiState.Ready {
     val zoneId = clock.zone
@@ -145,19 +159,35 @@ fun summaryForPeriod(
         WeeklyDaySummary(
             date = date,
             calories = foodForDay.sumOf { it.calories ?: 0 },
+            proteinGrams = foodForDay.sumOf { it.proteinGrams ?: 0 },
             spendMinor = foodForDay.sumOf { it.priceMinor ?: 0L },
             waterMl = waterForDay.sumOf(WaterEntryEntity::amountMl),
             entryCount = foodForDay.size + waterForDay.size,
         )
     }
 
+    val goalByDate = days.associate { day ->
+        day.date to goalForDate(day.date, goals, settings.toDailyGoal())
+    }
+    val calorieGoalDays = days.filter { goalByDate.getValue(it.date).calories != null }
+    val proteinGoalDays = days.filter { goalByDate.getValue(it.date).proteinGrams != null }
+
     return WeeklySummaryUiState.Ready(
         period = period,
         days = days,
         totalCalories = days.sumOf(WeeklyDaySummary::calories),
+        totalProteinGrams = days.sumOf(WeeklyDaySummary::proteinGrams),
         totalSpendMinor = days.sumOf(WeeklyDaySummary::spendMinor),
         averageWaterMl = days.sumOf(WeeklyDaySummary::waterMl) / days.size,
-        daysAtWaterGoal = days.count { it.waterMl >= settings.dailyWaterGoalMl },
+        daysAtWaterGoal = days.count { day -> day.waterMl >= goalByDate.getValue(day.date).waterMl },
+        daysAtCalorieGoal = calorieGoalDays.takeIf { it.isNotEmpty() }?.count { day ->
+            day.calories >= requireNotNull(goalByDate.getValue(day.date).calories)
+        },
+        calorieGoalDayCount = calorieGoalDays.size,
+        daysAtProteinGoal = proteinGoalDays.takeIf { it.isNotEmpty() }?.count { day ->
+            day.proteinGrams >= requireNotNull(goalByDate.getValue(day.date).proteinGrams)
+        },
+        proteinGoalDayCount = proteinGoalDays.size,
         settings = settings,
         canNavigateForward = false,
     )
