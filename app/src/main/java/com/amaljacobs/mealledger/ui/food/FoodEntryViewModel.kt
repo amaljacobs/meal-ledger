@@ -22,15 +22,22 @@ data class FoodEntryFormState(
     val mealType: MealType? = null,
     val error: String? = null,
     val saving: Boolean = false,
+    val loading: Boolean = false,
 )
 
 class FoodEntryViewModel(
     private val repository: MealLedgerRepository,
     private val onSaved: () -> Unit,
+    entryId: Long? = null,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private val _state = MutableStateFlow(FoodEntryFormState())
     val state: StateFlow<FoodEntryFormState> = _state.asStateFlow()
+    private var existingEntry: FoodEntryEntity? = null
+
+    init {
+        if (entryId != null) load(entryId)
+    }
 
     fun update(transform: (FoodEntryFormState) -> FoodEntryFormState) { _state.value = transform(_state.value).copy(error = null) }
 
@@ -51,14 +58,58 @@ class FoodEntryViewModel(
         viewModelScope.launch {
             _state.value = current.copy(saving = true)
             val now = clock.instant()
-            repository.addFoodEntry(FoodEntryEntity(name = current.name.trim(), consumedAt = now, mealType = current.mealType, portionNote = current.portionNote.trim().ifBlank { null }, calories = calories, proteinGrams = protein, priceMinor = price?.let { (it * 100).toLong() }, currencyCode = if (price == null) null else "INR", note = current.note.trim().ifBlank { null }, createdAt = now, updatedAt = now))
+            val entry = FoodEntryEntity(
+                id = existingEntry?.id ?: 0,
+                name = current.name.trim(),
+                consumedAt = existingEntry?.consumedAt ?: now,
+                mealType = current.mealType,
+                portionNote = current.portionNote.trim().ifBlank { null },
+                calories = calories,
+                proteinGrams = protein,
+                priceMinor = price?.let { (it * 100).toLong() },
+                currencyCode = if (price == null) null else "INR",
+                note = current.note.trim().ifBlank { null },
+                createdAt = existingEntry?.createdAt ?: now,
+                updatedAt = now,
+            )
+            if (existingEntry == null) repository.addFoodEntry(entry) else repository.updateFoodEntry(entry)
             onSaved()
         }
     }
 
+    fun delete() {
+        val entry = existingEntry ?: return
+        viewModelScope.launch {
+            _state.value = _state.value.copy(saving = true)
+            repository.deleteFoodEntry(entry)
+            onSaved()
+        }
+    }
+
+    private fun load(entryId: Long) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(loading = true)
+            val entry = repository.getFoodEntry(entryId)
+            if (entry == null) {
+                _state.value = _state.value.copy(loading = false, error = "This food entry no longer exists")
+                return@launch
+            }
+            existingEntry = entry
+            _state.value = FoodEntryFormState(
+                name = entry.name,
+                portionNote = entry.portionNote.orEmpty(),
+                calories = entry.calories?.toString().orEmpty(),
+                proteinGrams = entry.proteinGrams?.toString().orEmpty(),
+                price = entry.priceMinor?.let { "%.2f".format(it / 100.0) }.orEmpty(),
+                note = entry.note.orEmpty(),
+                mealType = entry.mealType,
+            )
+        }
+    }
+
     companion object {
-        fun factory(repository: MealLedgerRepository, onSaved: () -> Unit) = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = FoodEntryViewModel(repository, onSaved) as T
+        fun factory(repository: MealLedgerRepository, onSaved: () -> Unit, entryId: Long? = null) = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = FoodEntryViewModel(repository, onSaved, entryId) as T
         }
     }
 }

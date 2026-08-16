@@ -11,6 +11,8 @@ class MealLedgerRepository(
     private val foodEntryDao: FoodEntryDao,
     private val waterEntryDao: WaterEntryDao,
 ) {
+    suspend fun getFoodEntry(id: Long): FoodEntryEntity? = foodEntryDao.getById(id)
+
     fun observeFoodEntries(
         startInclusive: Instant,
         endExclusive: Instant,
@@ -26,6 +28,8 @@ class MealLedgerRepository(
     suspend fun updateFoodEntry(entry: FoodEntryEntity) = foodEntryDao.update(entry)
 
     suspend fun deleteFoodEntry(entry: FoodEntryEntity) = foodEntryDao.delete(entry)
+
+    suspend fun getWaterEntry(id: Long): WaterEntryEntity? = waterEntryDao.getById(id)
 
     suspend fun addWaterEntry(entry: WaterEntryEntity): Long = waterEntryDao.insert(entry)
 

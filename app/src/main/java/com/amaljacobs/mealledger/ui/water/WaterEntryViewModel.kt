@@ -15,15 +15,22 @@ data class WaterEntryFormState(
     val amountMl: String = "",
     val error: String? = null,
     val saving: Boolean = false,
+    val loading: Boolean = false,
 )
 
 class WaterEntryViewModel(
     private val repository: MealLedgerRepository,
     private val onSaved: () -> Unit,
+    entryId: Long? = null,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private val _state = MutableStateFlow(WaterEntryFormState())
     val state: StateFlow<WaterEntryFormState> = _state.asStateFlow()
+    private var existingEntry: WaterEntryEntity? = null
+
+    init {
+        if (entryId != null) load(entryId)
+    }
 
     fun setAmount(amountMl: String) {
         _state.value = _state.value.copy(amountMl = amountMl, error = null)
@@ -39,14 +46,43 @@ class WaterEntryViewModel(
         viewModelScope.launch {
             _state.value = current.copy(saving = true)
             val now = clock.instant()
-            repository.addWaterEntry(WaterEntryEntity(amountMl = amount, consumedAt = now, createdAt = now, updatedAt = now))
+            val entry = WaterEntryEntity(
+                id = existingEntry?.id ?: 0,
+                amountMl = amount,
+                consumedAt = existingEntry?.consumedAt ?: now,
+                createdAt = existingEntry?.createdAt ?: now,
+                updatedAt = now,
+            )
+            if (existingEntry == null) repository.addWaterEntry(entry) else repository.updateWaterEntry(entry)
             onSaved()
         }
     }
 
+    fun delete() {
+        val entry = existingEntry ?: return
+        viewModelScope.launch {
+            _state.value = _state.value.copy(saving = true)
+            repository.deleteWaterEntry(entry)
+            onSaved()
+        }
+    }
+
+    private fun load(entryId: Long) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(loading = true)
+            val entry = repository.getWaterEntry(entryId)
+            if (entry == null) {
+                _state.value = _state.value.copy(loading = false, error = "This water entry no longer exists")
+                return@launch
+            }
+            existingEntry = entry
+            _state.value = WaterEntryFormState(amountMl = entry.amountMl.toString())
+        }
+    }
+
     companion object {
-        fun factory(repository: MealLedgerRepository, onSaved: () -> Unit) = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = WaterEntryViewModel(repository, onSaved) as T
+        fun factory(repository: MealLedgerRepository, onSaved: () -> Unit, entryId: Long? = null) = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = WaterEntryViewModel(repository, onSaved, entryId) as T
         }
     }
 }

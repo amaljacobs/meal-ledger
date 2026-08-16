@@ -13,12 +13,13 @@ This roadmap turns the MVP specification into a dependency-aware delivery order.
 | #6 | Today dashboard, local-day navigation, Room-backed daily totals, empty/loading states, and dashboard unit tests completed. |
 | #7 | Food-entry form with optional meal, portion, calories, protein, price, and note fields completed; validation and on-device saving verified. |
 | #9 | Water-entry form with 250 ml cup defaults, quick amounts, custom millilitre validation, and Room persistence completed. |
+| #4 | Food and water timeline rows open pre-filled editors; updates and confirmed deletions persist through Room and refresh the dashboard. |
 
 ## Current Work
 
-### #4 Add edit and delete actions
+### #17 Improve food timeline presentation
 
-Allow food and water entries to be corrected or removed, with confirmation before deletion.
+Show a contextual meal icon and optional protein in food timeline rows while keeping corrected-entry actions easy to reach.
 
 ## Delivery Order
 

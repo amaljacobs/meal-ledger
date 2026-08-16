@@ -11,6 +11,9 @@ import java.time.Instant
 
 @Dao
 interface WaterEntryDao {
+    @Query("SELECT * FROM water_entries WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): WaterEntryEntity?
+
     @Query(
         """
         SELECT * FROM water_entries

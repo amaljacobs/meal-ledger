@@ -1,6 +1,7 @@
 package com.amaljacobs.mealledger
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Column
@@ -31,10 +32,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -45,6 +51,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.amaljacobs.mealledger.data.repository.MealLedgerRepository
 import com.amaljacobs.mealledger.ui.today.DailyTotals
 import com.amaljacobs.mealledger.ui.today.TimelineEntry
@@ -119,10 +127,32 @@ fun MealLedgerApp(repository: MealLedgerRepository) {
                     repository = repository,
                     onAddFood = { navController.navigate("add-food") },
                     onAddWater = { navController.navigate("add-water") },
+                    onEditFood = { id -> navController.navigate("edit-food/$id") },
+                    onEditWater = { id -> navController.navigate("edit-water/$id") },
                 )
             }
             composable("add-food") { FoodEntryScreen(repository) { navController.popBackStack() } }
             composable("add-water") { WaterEntryScreen(repository) { navController.popBackStack() } }
+            composable(
+                route = "edit-food/{entryId}",
+                arguments = listOf(navArgument("entryId") { type = NavType.LongType }),
+            ) { entry ->
+                FoodEntryScreen(
+                    repository = repository,
+                    entryId = entry.arguments?.getLong("entryId"),
+                    onSaved = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = "edit-water/{entryId}",
+                arguments = listOf(navArgument("entryId") { type = NavType.LongType }),
+            ) { entry ->
+                WaterEntryScreen(
+                    repository = repository,
+                    entryId = entry.arguments?.getLong("entryId"),
+                    onSaved = { navController.popBackStack() },
+                )
+            }
             composable(AppDestination.Settings.route) { EmptyScreen(message = "Settings") }
         }
     }
@@ -133,6 +163,8 @@ private fun TodayScreen(
     repository: MealLedgerRepository,
     onAddFood: () -> Unit,
     onAddWater: () -> Unit,
+    onEditFood: (Long) -> Unit,
+    onEditWater: (Long) -> Unit,
 ) {
     val viewModel: TodayViewModel = viewModel(factory = TodayViewModel.factory(repository))
     val state by viewModel.uiState.collectAsState()
@@ -144,6 +176,8 @@ private fun TodayScreen(
             onNextDay = viewModel::showNextDay,
             onAddFood = onAddFood,
             onAddWater = onAddWater,
+            onEditFood = onEditFood,
+            onEditWater = onEditWater,
         )
     }
 }
@@ -155,6 +189,8 @@ fun TodayScreenContent(
     onNextDay: () -> Unit,
     onAddFood: () -> Unit = {},
     onAddWater: () -> Unit = {},
+    onEditFood: (Long) -> Unit = {},
+    onEditWater: (Long) -> Unit = {},
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -189,18 +225,27 @@ fun TodayScreenContent(
             item { EmptyTimeline() }
         } else {
             items(state.entries, key = { entry -> "${entry::class.simpleName}-${entry.id}" }) { entry ->
-                TimelineRow(entry)
+                TimelineRow(
+                    entry = entry,
+                    onClick = {
+                        when (entry) {
+                            is TimelineEntry.Food -> onEditFood(entry.id)
+                            is TimelineEntry.Water -> onEditWater(entry.id)
+                        }
+                    },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun FoodEntryScreen(repository: MealLedgerRepository, onSaved: () -> Unit) {
-    val viewModel: FoodEntryViewModel = viewModel(factory = FoodEntryViewModel.factory(repository, onSaved))
+private fun FoodEntryScreen(repository: MealLedgerRepository, entryId: Long? = null, onSaved: () -> Unit) {
+    val viewModel: FoodEntryViewModel = viewModel(factory = FoodEntryViewModel.factory(repository, onSaved, entryId))
     val state by viewModel.state.collectAsState()
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
     LazyColumn(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { Text("Add food", style = MaterialTheme.typography.headlineSmall) }
+        item { Text(if (entryId == null) "Add food" else "Edit food", style = MaterialTheme.typography.headlineSmall) }
         item { FoodField("Food name", state.name) { value -> viewModel.update { it.copy(name = value) } } }
         item { FoodField("Portion", state.portionNote) { value -> viewModel.update { it.copy(portionNote = value) } } }
         item { FoodField("Calories", state.calories) { value -> viewModel.update { it.copy(calories = value) } } }
@@ -222,16 +267,27 @@ private fun FoodEntryScreen(repository: MealLedgerRepository, onSaved: () -> Uni
             }
         }
         state.error?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error) } }
-        item { Button(onClick = viewModel::save, enabled = !state.saving) { Text(if (state.saving) "Saving" else "Save") } }
+        item { Button(onClick = viewModel::save, enabled = !state.saving && !state.loading) { Text(if (state.saving) "Saving" else "Save") } }
+        if (entryId != null) {
+            item { OutlinedButton(onClick = { showDeleteConfirmation = true }, enabled = !state.saving && !state.loading) { Text("Delete") } }
+        }
+    }
+    if (showDeleteConfirmation) {
+        DeleteConfirmationDialog(
+            entryLabel = "food entry",
+            onConfirm = viewModel::delete,
+            onDismiss = { showDeleteConfirmation = false },
+        )
     }
 }
 
 @Composable
-private fun WaterEntryScreen(repository: MealLedgerRepository, onSaved: () -> Unit) {
-    val viewModel: WaterEntryViewModel = viewModel(factory = WaterEntryViewModel.factory(repository, onSaved))
+private fun WaterEntryScreen(repository: MealLedgerRepository, entryId: Long? = null, onSaved: () -> Unit) {
+    val viewModel: WaterEntryViewModel = viewModel(factory = WaterEntryViewModel.factory(repository, onSaved, entryId))
     val state by viewModel.state.collectAsState()
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
     LazyColumn(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Text("Add water", style = MaterialTheme.typography.headlineSmall) }
+        item { Text(if (entryId == null) "Add water" else "Edit water", style = MaterialTheme.typography.headlineSmall) }
         item {
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -256,7 +312,17 @@ private fun WaterEntryScreen(repository: MealLedgerRepository, onSaved: () -> Un
             )
         }
         state.error?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error) } }
-        item { Button(onClick = viewModel::save, enabled = !state.saving) { Text(if (state.saving) "Saving" else "Save") } }
+        item { Button(onClick = viewModel::save, enabled = !state.saving && !state.loading) { Text(if (state.saving) "Saving" else "Save") } }
+        if (entryId != null) {
+            item { OutlinedButton(onClick = { showDeleteConfirmation = true }, enabled = !state.saving && !state.loading) { Text("Delete") } }
+        }
+    }
+    if (showDeleteConfirmation) {
+        DeleteConfirmationDialog(
+            entryLabel = "water entry",
+            onConfirm = viewModel::delete,
+            onDismiss = { showDeleteConfirmation = false },
+        )
     }
 }
 
@@ -313,7 +379,7 @@ private fun TotalMetric(label: String, value: String) {
 }
 
 @Composable
-private fun TimelineRow(entry: TimelineEntry) {
+private fun TimelineRow(entry: TimelineEntry, onClick: () -> Unit) {
     val time = entry.consumedAt.atZone(java.time.ZoneId.systemDefault())
         .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
     val (icon, title, detail) = when (entry) {
@@ -334,6 +400,7 @@ private fun TimelineRow(entry: TimelineEntry) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -348,6 +415,21 @@ private fun TimelineRow(entry: TimelineEntry) {
         Text(text = time, style = MaterialTheme.typography.bodyMedium)
     }
     HorizontalDivider(modifier = Modifier.padding(start = 56.dp, top = 12.dp))
+}
+
+@Composable
+private fun DeleteConfirmationDialog(
+    entryLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete entry?") },
+        text = { Text("This $entryLabel will be permanently removed.") },
+        confirmButton = { Button(onClick = onConfirm) { Text("Delete") } },
+        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
