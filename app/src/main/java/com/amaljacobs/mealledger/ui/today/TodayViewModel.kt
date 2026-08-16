@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.amaljacobs.mealledger.data.local.FoodEntryEntity
 import com.amaljacobs.mealledger.data.local.WaterEntryEntity
 import com.amaljacobs.mealledger.data.repository.MealLedgerRepository
+import com.amaljacobs.mealledger.data.settings.SettingsRepository
+import com.amaljacobs.mealledger.data.settings.UserSettings
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -45,17 +47,21 @@ sealed interface TodayUiState {
         val selectedDate: LocalDate,
         val entries: List<TimelineEntry>,
         val totals: DailyTotals,
+        val settings: UserSettings,
     ) : TodayUiState
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TodayViewModel(
     private val repository: MealLedgerRepository,
+    private val settingsRepository: SettingsRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private val selectedDate = MutableStateFlow(LocalDate.now(clock))
 
-    val uiState: StateFlow<TodayUiState> = selectedDate.flatMapLatest { date ->
+    val uiState: StateFlow<TodayUiState> = combine(selectedDate, settingsRepository.settings) { date, settings ->
+        date to settings
+    }.flatMapLatest { (date, settings) ->
         val zoneId = clock.zone
         val start = date.atStartOfDay(zoneId).toInstant()
         val end = date.plusDays(1).atStartOfDay(zoneId).toInstant()
@@ -67,6 +73,7 @@ class TodayViewModel(
                 selectedDate = date,
                 entries = timelineEntries(foodEntries, waterEntries),
                 totals = calculateDailyTotals(foodEntries, waterEntries),
+                settings = settings,
             )
         }
     }.stateIn(
@@ -84,11 +91,14 @@ class TodayViewModel(
     }
 
     companion object {
-        fun factory(repository: MealLedgerRepository): ViewModelProvider.Factory =
+        fun factory(
+            repository: MealLedgerRepository,
+            settingsRepository: SettingsRepository,
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    TodayViewModel(repository) as T
+                    TodayViewModel(repository, settingsRepository) as T
             }
     }
 }

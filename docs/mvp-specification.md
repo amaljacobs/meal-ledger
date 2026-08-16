@@ -39,7 +39,7 @@ Required fields:
 - Amount in millilitres
 - Consumed time; default to the current time
 
-The form includes quick amounts: 250 ml, 500 ml, and 1,000 ml. The user may enter another positive whole-number amount. Editing and deletion follow the food-entry behavior.
+The form includes shortcuts for one and two configured cups plus 500 ml and 1,000 ml. The default cup size is 250 ml. The user may enter another positive whole-number amount. Editing and deletion follow the food-entry behavior.
 
 ### Summary
 
@@ -55,8 +55,9 @@ Monthly reports, charts, exports, and budgets are out of scope for the MVP.
 
 - Currency code, defaulting to the device locale when available.
 - Daily water goal in millilitres, default 2,500 ml.
-- Optional daily calorie target; disabled by default.
-- About section with app version and privacy statement.
+- Default cup size in millilitres, default 250 ml, used by water shortcuts.
+
+An optional calorie target and About section are deferred until they have a defined use in the MVP.
 
 ## User Flows
 
@@ -119,7 +120,7 @@ One locally stored settings record.
 | --- | --- | --- |
 | currencyCode | String | ISO 4217 code |
 | dailyWaterGoalMl | Int | Positive whole number |
-| dailyCalorieTarget | Int? | Optional positive whole number |
+| cupSizeMl | Int | Positive whole number; default 250 |
 
 ## Derived Values
 

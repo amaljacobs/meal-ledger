@@ -9,6 +9,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.amaljacobs.mealledger.ui.today.DailyTotals
 import com.amaljacobs.mealledger.ui.today.TodayUiState
 import com.amaljacobs.mealledger.ui.theme.MealLedgerTheme
+import com.amaljacobs.mealledger.data.settings.UserSettings
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -16,7 +17,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MealLedgerTheme {
-                MealLedgerApp(repository = (application as MealLedgerApplication).repository)
+                MealLedgerApp(
+                    repository = (application as MealLedgerApplication).repository,
+                    settingsRepository = (application as MealLedgerApplication).settingsRepository,
+                )
             }
         }
     }
@@ -31,6 +35,7 @@ fun MealLedgerAppPreview() {
                 selectedDate = java.time.LocalDate.now(),
                 entries = emptyList(),
                 totals = DailyTotals(),
+                settings = UserSettings(),
             ),
             onPreviousDay = {},
             onNextDay = {},

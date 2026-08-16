@@ -15,12 +15,13 @@ This roadmap turns the MVP specification into a dependency-aware delivery order.
 | #9 | Water-entry form with 250 ml cup defaults, quick amounts, custom millilitre validation, and Room persistence completed. |
 | #4 | Food and water timeline rows open pre-filled editors; updates and confirmed deletions persist through Room and refresh the dashboard. |
 | #17 | Food timeline uses contextual meal icons and shows recorded protein while retaining entry correction access. |
+| #5 | Preferences DataStore persists currency, daily water goal, and cup size; the dashboard shows water-goal progress, and new food and water entries use the selected preferences. |
 
 ## Current Work
 
-### #5 Add settings for currency and water goal
+### #3 Weekly summary screen
 
-Persist the small set of personal preferences needed to make water logging and spending totals meaningful.
+Build the historical weekly view from the persisted entries and daily water goal.
 
 ## Delivery Order
 

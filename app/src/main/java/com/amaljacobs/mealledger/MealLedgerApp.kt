@@ -24,10 +24,14 @@ import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -49,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -58,6 +63,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.amaljacobs.mealledger.data.repository.MealLedgerRepository
+import com.amaljacobs.mealledger.data.settings.SettingsRepository
+import com.amaljacobs.mealledger.data.settings.UserSettings
 import com.amaljacobs.mealledger.ui.today.DailyTotals
 import com.amaljacobs.mealledger.ui.today.TimelineEntry
 import com.amaljacobs.mealledger.ui.today.TodayUiState
@@ -66,6 +73,7 @@ import com.amaljacobs.mealledger.ui.food.FoodEntryViewModel
 import com.amaljacobs.mealledger.ui.food.FoodEntryFormState
 import com.amaljacobs.mealledger.data.local.MealType
 import com.amaljacobs.mealledger.ui.water.WaterEntryViewModel
+import com.amaljacobs.mealledger.ui.settings.SettingsViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -92,7 +100,10 @@ private val topLevelDestinations = listOf(AppDestination.Today, AppDestination.S
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MealLedgerApp(repository: MealLedgerRepository) {
+fun MealLedgerApp(
+    repository: MealLedgerRepository,
+    settingsRepository: SettingsRepository,
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
@@ -129,20 +140,26 @@ fun MealLedgerApp(repository: MealLedgerRepository) {
             composable(AppDestination.Today.route) {
                 TodayScreen(
                     repository = repository,
+                    settingsRepository = settingsRepository,
                     onAddFood = { navController.navigate("add-food") },
                     onAddWater = { navController.navigate("add-water") },
                     onEditFood = { id -> navController.navigate("edit-food/$id") },
                     onEditWater = { id -> navController.navigate("edit-water/$id") },
                 )
             }
-            composable("add-food") { FoodEntryScreen(repository) { navController.popBackStack() } }
-            composable("add-water") { WaterEntryScreen(repository) { navController.popBackStack() } }
+            composable("add-food") {
+                FoodEntryScreen(repository, settingsRepository) { navController.popBackStack() }
+            }
+            composable("add-water") {
+                WaterEntryScreen(repository, settingsRepository) { navController.popBackStack() }
+            }
             composable(
                 route = "edit-food/{entryId}",
                 arguments = listOf(navArgument("entryId") { type = NavType.LongType }),
             ) { entry ->
                 FoodEntryScreen(
                     repository = repository,
+                    settingsRepository = settingsRepository,
                     entryId = entry.arguments?.getLong("entryId"),
                     onSaved = { navController.popBackStack() },
                 )
@@ -153,11 +170,12 @@ fun MealLedgerApp(repository: MealLedgerRepository) {
             ) { entry ->
                 WaterEntryScreen(
                     repository = repository,
+                    settingsRepository = settingsRepository,
                     entryId = entry.arguments?.getLong("entryId"),
                     onSaved = { navController.popBackStack() },
                 )
             }
-            composable(AppDestination.Settings.route) { EmptyScreen(message = "Settings") }
+            composable(AppDestination.Settings.route) { SettingsScreen(settingsRepository) }
         }
     }
 }
@@ -165,12 +183,15 @@ fun MealLedgerApp(repository: MealLedgerRepository) {
 @Composable
 private fun TodayScreen(
     repository: MealLedgerRepository,
+    settingsRepository: SettingsRepository,
     onAddFood: () -> Unit,
     onAddWater: () -> Unit,
     onEditFood: (Long) -> Unit,
     onEditWater: (Long) -> Unit,
 ) {
-    val viewModel: TodayViewModel = viewModel(factory = TodayViewModel.factory(repository))
+    val viewModel: TodayViewModel = viewModel(
+        factory = TodayViewModel.factory(repository, settingsRepository),
+    )
     val state by viewModel.uiState.collectAsState()
     when (state) {
         TodayUiState.Loading -> LoadingScreen()
@@ -207,7 +228,7 @@ fun TodayScreenContent(
                 onNextDay = onNextDay,
             )
         }
-        item { DailyTotalsRow(state.totals) }
+        item { DailyTotalsRow(state.totals, state.settings) }
         item {
             Row(
                 modifier = Modifier.padding(horizontal = 20.dp),
@@ -244,9 +265,17 @@ fun TodayScreenContent(
 }
 
 @Composable
-private fun FoodEntryScreen(repository: MealLedgerRepository, entryId: Long? = null, onSaved: () -> Unit) {
-    val viewModel: FoodEntryViewModel = viewModel(factory = FoodEntryViewModel.factory(repository, onSaved, entryId))
+private fun FoodEntryScreen(
+    repository: MealLedgerRepository,
+    settingsRepository: SettingsRepository,
+    entryId: Long? = null,
+    onSaved: () -> Unit,
+) {
+    val viewModel: FoodEntryViewModel = viewModel(
+        factory = FoodEntryViewModel.factory(repository, settingsRepository, onSaved, entryId),
+    )
     val state by viewModel.state.collectAsState()
+    val settings by settingsRepository.settings.collectAsState(initial = UserSettings())
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     LazyColumn(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { Text(if (entryId == null) "Add food" else "Edit food", style = MaterialTheme.typography.headlineSmall) }
@@ -254,7 +283,7 @@ private fun FoodEntryScreen(repository: MealLedgerRepository, entryId: Long? = n
         item { FoodField("Portion", state.portionNote) { value -> viewModel.update { it.copy(portionNote = value) } } }
         item { FoodField("Calories", state.calories) { value -> viewModel.update { it.copy(calories = value) } } }
         item { FoodField("Protein (g)", state.proteinGrams) { value -> viewModel.update { it.copy(proteinGrams = value) } } }
-        item { FoodField("Price (INR)", state.price) { value -> viewModel.update { it.copy(price = value) } } }
+        item { FoodField("Price (${settings.currencyCode})", state.price) { value -> viewModel.update { it.copy(price = value) } } }
         item { FoodField("Note", state.note) { value -> viewModel.update { it.copy(note = value) } } }
         item {
             Row(
@@ -286,9 +315,15 @@ private fun FoodEntryScreen(repository: MealLedgerRepository, entryId: Long? = n
 }
 
 @Composable
-private fun WaterEntryScreen(repository: MealLedgerRepository, entryId: Long? = null, onSaved: () -> Unit) {
+private fun WaterEntryScreen(
+    repository: MealLedgerRepository,
+    settingsRepository: SettingsRepository,
+    entryId: Long? = null,
+    onSaved: () -> Unit,
+) {
     val viewModel: WaterEntryViewModel = viewModel(factory = WaterEntryViewModel.factory(repository, onSaved, entryId))
     val state by viewModel.state.collectAsState()
+    val settings by settingsRepository.settings.collectAsState(initial = UserSettings())
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     LazyColumn(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Text(if (entryId == null) "Add water" else "Edit water", style = MaterialTheme.typography.headlineSmall) }
@@ -297,7 +332,12 @@ private fun WaterEntryScreen(repository: MealLedgerRepository, entryId: Long? = 
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                listOf("1 cup" to 250, "2 cups" to 500, "500 ml" to 500, "1,000 ml" to 1000).forEach { (label, amount) ->
+                listOf(
+                    "1 cup" to settings.cupSizeMl,
+                    "2 cups" to settings.cupSizeMl * 2,
+                    "500 ml" to 500,
+                    "1,000 ml" to 1_000,
+                ).forEach { (label, amount) ->
                     FilterChip(
                         selected = state.amountMl == amount.toString(),
                         onClick = { viewModel.setAmount(amount.toString()) },
@@ -361,24 +401,49 @@ private fun DateSelector(
 }
 
 @Composable
-private fun DailyTotalsRow(totals: DailyTotals) {
+private fun DailyTotalsRow(totals: DailyTotals, settings: UserSettings) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        TotalMetric(label = "Calories", value = totals.calories.toString())
-        TotalMetric(label = "Spend", value = formatMoney(totals.spendMinor))
-        TotalMetric(label = "Water", value = "${totals.waterMl} ml")
+        TotalMetric(
+            label = "Calories",
+            value = totals.calories.toString(),
+            modifier = Modifier.weight(1f),
+        )
+        TotalMetric(
+            label = "Spend",
+            value = formatMoney(totals.spendMinor, settings.currencyCode),
+            modifier = Modifier.weight(1f),
+        )
+        WaterTotalMetric(totals.waterMl, settings.dailyWaterGoalMl)
     }
 }
 
 @Composable
-private fun TotalMetric(label: String, value: String) {
-    Column {
+private fun WaterTotalMetric(waterMl: Int, dailyGoalMl: Int) {
+    val progress = (waterMl.toFloat() / dailyGoalMl).coerceIn(0f, 1f)
+    Column(modifier = Modifier.size(width = 104.dp, height = 64.dp)) {
+        Text(text = "Water", style = MaterialTheme.typography.labelLarge)
+        Text(text = "$waterMl ml", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+        Text(text = "/ $dailyGoalMl ml", style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
+private fun TotalMetric(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
         Text(text = label, style = MaterialTheme.typography.labelLarge)
-        Text(text = value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -468,16 +533,75 @@ private fun LoadingScreen() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EmptyScreen(message: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
+private fun SettingsScreen(settingsRepository: SettingsRepository) {
+    val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.factory(settingsRepository))
+    val state by viewModel.state.collectAsState()
+    var currencyMenuExpanded by remember { mutableStateOf(false) }
+    val currencies = listOf("INR", "USD", "EUR", "GBP", "AED")
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(text = message, style = MaterialTheme.typography.bodyLarge)
+        item { Text("Preferences", style = MaterialTheme.typography.headlineSmall) }
+        item {
+            ExposedDropdownMenuBox(
+                expanded = currencyMenuExpanded,
+                onExpandedChange = { currencyMenuExpanded = it },
+            ) {
+                OutlinedTextField(
+                    value = state.currencyCode,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Currency") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(currencyMenuExpanded) },
+                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                )
+                ExposedDropdownMenu(
+                    expanded = currencyMenuExpanded,
+                    onDismissRequest = { currencyMenuExpanded = false },
+                ) {
+                    currencies.forEach { currencyCode ->
+                        DropdownMenuItem(
+                            text = { Text(currencyCode) },
+                            onClick = {
+                                viewModel.update { it.copy(currencyCode = currencyCode) }
+                                currencyMenuExpanded = false
+                            },
+                        )
+                    }
+                }
+            }
+        }
+        item {
+            OutlinedTextField(
+                value = state.dailyWaterGoalMl,
+                onValueChange = { value -> viewModel.update { it.copy(dailyWaterGoalMl = value) } },
+                label = { Text("Daily water goal (ml)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+        }
+        item {
+            OutlinedTextField(
+                value = state.cupSizeMl,
+                onValueChange = { value -> viewModel.update { it.copy(cupSizeMl = value) } },
+                label = { Text("Default cup size (ml)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+        }
+        state.error?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error) } }
+        item {
+            Button(
+                onClick = viewModel::save,
+                enabled = !state.loading && !state.saving,
+            ) { Text(if (state.saving) "Saving" else "Save settings") }
+        }
     }
 }
 
-private fun formatMoney(amountMinor: Long): String = "${amountMinor / 100}.${(amountMinor % 100).toString().padStart(2, '0')}"
+private fun formatMoney(amountMinor: Long, currencyCode: String): String =
+    "$currencyCode ${amountMinor / 100}.${(amountMinor % 100).toString().padStart(2, '0')}"
