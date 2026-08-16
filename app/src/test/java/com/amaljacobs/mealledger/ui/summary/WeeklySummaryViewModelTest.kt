@@ -15,9 +15,9 @@ class WeeklySummaryViewModelTest {
     private val timestamp = Instant.parse("2026-08-15T09:00:00Z")
 
     @Test
-    fun weeklySummaryIncludesEmptyDaysAndCalculatesTotals() {
-        val summary = weeklySummary(
-            startDate = LocalDate.parse("2026-08-10"),
+    fun summaryIncludesEmptyDaysAndCalculatesTotals() {
+        val summary = summaryForPeriod(
+            period = summaryPeriodFor(SummaryMode.Week, LocalDate.parse("2026-08-10")),
             foodEntries = listOf(
                 FoodEntryEntity(
                     name = "Lunch",
@@ -42,5 +42,23 @@ class WeeklySummaryViewModelTest {
         assertEquals(12550, summary.totalSpendMinor)
         assertEquals(357, summary.averageWaterMl)
         assertEquals(1, summary.daysAtWaterGoal)
+    }
+
+    @Test
+    fun weekPeriodStartsOnMondayAndEndsOnSunday() {
+        val period = summaryPeriodFor(SummaryMode.Week, LocalDate.parse("2026-08-16"))
+
+        assertEquals(LocalDate.parse("2026-08-10"), period.startDate)
+        assertEquals(LocalDate.parse("2026-08-16"), period.endDate)
+        assertEquals(7, period.days.size)
+    }
+
+    @Test
+    fun monthPeriodIncludesEveryDateInTheMonth() {
+        val period = summaryPeriodFor(SummaryMode.Month, LocalDate.parse("2026-02-12"))
+
+        assertEquals(LocalDate.parse("2026-02-01"), period.startDate)
+        assertEquals(LocalDate.parse("2026-02-28"), period.endDate)
+        assertEquals(28, period.days.size)
     }
 }
