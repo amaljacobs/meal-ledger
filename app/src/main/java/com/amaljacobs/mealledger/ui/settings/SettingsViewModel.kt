@@ -3,8 +3,9 @@ package com.amaljacobs.mealledger.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.amaljacobs.mealledger.data.settings.SettingsRepository
+import com.amaljacobs.mealledger.data.settings.SettingsStore
 import com.amaljacobs.mealledger.data.settings.UserSettings
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,19 +20,24 @@ data class SettingsUiState(
     val error: String? = null,
 )
 
-class SettingsViewModel(private val settingsRepository: SettingsRepository) : ViewModel() {
+class SettingsViewModel(private val settingsRepository: SettingsStore) : ViewModel() {
     private val _state = MutableStateFlow(SettingsUiState())
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
 
     init {
         viewModelScope.launch {
             settingsRepository.settings.collect { settings ->
-                _state.value = SettingsUiState(
-                    currencyCode = settings.currencyCode,
-                    dailyWaterGoalMl = settings.dailyWaterGoalMl.toString(),
-                    cupSizeMl = settings.cupSizeMl.toString(),
-                    loading = false,
-                )
+                val current = _state.value
+                _state.value = if (current.loading) {
+                    SettingsUiState(
+                        currencyCode = settings.currencyCode,
+                        dailyWaterGoalMl = settings.dailyWaterGoalMl.toString(),
+                        cupSizeMl = settings.cupSizeMl.toString(),
+                        loading = false,
+                    )
+                } else {
+                    current.copy(loading = false, saving = false)
+                }
             }
         }
     }
@@ -42,6 +48,7 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
 
     fun save() {
         val current = _state.value
+        if (current.loading || current.saving) return
         val waterGoal = current.dailyWaterGoalMl.toIntOrNull()
         val cupSize = current.cupSizeMl.toIntOrNull()
         val error = when {
@@ -55,20 +62,27 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
         }
         viewModelScope.launch {
             _state.value = current.copy(saving = true)
-            val validWaterGoal = requireNotNull(waterGoal)
-            val validCupSize = requireNotNull(cupSize)
-            settingsRepository.update(
-                UserSettings(
-                    currencyCode = current.currencyCode,
-                    dailyWaterGoalMl = validWaterGoal,
-                    cupSizeMl = validCupSize,
-                ),
-            )
+            try {
+                settingsRepository.update(
+                    UserSettings(
+                        currencyCode = current.currencyCode,
+                        dailyWaterGoalMl = requireNotNull(waterGoal),
+                        cupSizeMl = requireNotNull(cupSize),
+                    ),
+                )
+                _state.value = _state.value.copy(saving = false)
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                _state.value = _state.value.copy(
+                    saving = false,
+                    error = "Could not save settings. Please try again.",
+                )
+            }
         }
     }
 
     companion object {
-        fun factory(settingsRepository: SettingsRepository): ViewModelProvider.Factory =
+        fun factory(settingsRepository: SettingsStore): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =

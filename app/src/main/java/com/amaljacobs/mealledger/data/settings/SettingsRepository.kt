@@ -13,8 +13,14 @@ import kotlinx.coroutines.flow.map
 private const val SETTINGS_FILE_NAME = "user_settings"
 private val Context.settingsDataStore by preferencesDataStore(name = SETTINGS_FILE_NAME)
 
-class SettingsRepository(private val context: Context) {
-    val settings: Flow<UserSettings> = context.settingsDataStore.data.map { preferences ->
+interface SettingsStore {
+    val settings: Flow<UserSettings>
+
+    suspend fun update(settings: UserSettings)
+}
+
+class SettingsRepository(private val context: Context) : SettingsStore {
+    override val settings: Flow<UserSettings> = context.settingsDataStore.data.map { preferences ->
         UserSettings(
             currencyCode = preferences[CurrencyCodeKey] ?: defaultCurrencyCode(),
             dailyWaterGoalMl = preferences[DailyWaterGoalKey] ?: 2_500,
@@ -22,7 +28,7 @@ class SettingsRepository(private val context: Context) {
         )
     }
 
-    suspend fun update(settings: UserSettings) {
+    override suspend fun update(settings: UserSettings) {
         context.settingsDataStore.edit { preferences ->
             preferences[CurrencyCodeKey] = settings.currencyCode
             preferences[DailyWaterGoalKey] = settings.dailyWaterGoalMl
