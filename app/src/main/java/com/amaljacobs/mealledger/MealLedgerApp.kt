@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -33,6 +34,8 @@ import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -43,7 +46,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -53,6 +58,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -64,6 +70,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -93,6 +102,8 @@ import com.amaljacobs.mealledger.ui.summary.WeeklySummaryUiState
 import com.amaljacobs.mealledger.ui.summary.WeeklySummaryViewModel
 import com.amaljacobs.mealledger.ui.summary.SummaryMode
 import java.time.LocalDate
+import java.time.Instant
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
@@ -156,6 +167,13 @@ fun MealLedgerApp(
                         },
                         icon = { Icon(destination.icon, contentDescription = null) },
                         label = { Text(destination.label) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
                     )
                 }
             }
@@ -465,6 +483,7 @@ private fun TodayScreen(
             state = state as TodayUiState.Ready,
             onPreviousDay = viewModel::showPreviousDay,
             onNextDay = viewModel::showNextDay,
+            onDateSelected = viewModel::selectDate,
             onAddFood = onAddFood,
             onAddWater = onAddWater,
             onEditFood = onEditFood,
@@ -478,6 +497,7 @@ fun TodayScreenContent(
     state: TodayUiState.Ready,
     onPreviousDay: () -> Unit,
     onNextDay: () -> Unit,
+    onDateSelected: (LocalDate) -> Unit = {},
     onAddFood: () -> Unit = {},
     onAddWater: () -> Unit = {},
     onEditFood: (Long) -> Unit = {},
@@ -492,6 +512,7 @@ fun TodayScreenContent(
                 date = state.selectedDate,
                 onPreviousDay = onPreviousDay,
                 onNextDay = onNextDay,
+                onDateSelected = onDateSelected,
             )
         }
         item { DailyTotalsRow(state.totals, state.settings, state.goal) }
@@ -521,7 +542,7 @@ fun TodayScreenContent(
             )
         }
         if (state.entries.isEmpty()) {
-            item { EmptyTimeline() }
+            item { EmptyTimeline(onAddFood = onAddFood, onAddWater = onAddWater) }
         } else {
             items(state.entries, key = { entry -> "${entry::class.simpleName}-${entry.id}" }) { entry ->
                 TimelineRow(
@@ -560,11 +581,12 @@ private fun FoodEntryScreen(
             }
         }
         item { FoodField("Food name", state.name) { value -> viewModel.update { it.copy(name = value) } } }
-        item { FoodField("Portion", state.portionNote) { value -> viewModel.update { it.copy(portionNote = value) } } }
-        item { FoodField("Calories", state.calories) { value -> viewModel.update { it.copy(calories = value) } } }
-        item { FoodField("Protein (g)", state.proteinGrams) { value -> viewModel.update { it.copy(proteinGrams = value) } } }
-        item { FoodField("Price (${settings.currencyCode})", state.price) { value -> viewModel.update { it.copy(price = value) } } }
-        item { FoodField("Note", state.note) { value -> viewModel.update { it.copy(note = value) } } }
+        item { Text("Optional details", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
+        item { FoodField("Portion", state.portionNote, optional = true) { value -> viewModel.update { it.copy(portionNote = value) } } }
+        item { FoodField("Calories", state.calories, numeric = true, optional = true) { value -> viewModel.update { it.copy(calories = value) } } }
+        item { FoodField("Protein (g)", state.proteinGrams, numeric = true, optional = true) { value -> viewModel.update { it.copy(proteinGrams = value) } } }
+        item { FoodField("Price (${settings.currencyCode})", state.price, numeric = true, optional = true) { value -> viewModel.update { it.copy(price = value) } } }
+        item { FoodField("Note", state.note, optional = true) { value -> viewModel.update { it.copy(note = value) } } }
         item {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -639,6 +661,7 @@ private fun WaterEntryScreen(
                 label = { Text("Amount (ml)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             )
         }
         state.error?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error) } }
@@ -657,14 +680,31 @@ private fun WaterEntryScreen(
 }
 
 @Composable
-private fun FoodField(label: String, value: String, onValueChange: (String) -> Unit) { OutlinedTextField(value = value, onValueChange = onValueChange, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), singleLine = label != "Note") }
+private fun FoodField(
+    label: String,
+    value: String,
+    numeric: Boolean = false,
+    optional: Boolean = false,
+    onValueChange: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(if (optional) "$label (optional)" else label) },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = label != "Note",
+        keyboardOptions = KeyboardOptions(keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Text),
+    )
+}
 
 @Composable
 private fun DateSelector(
     date: LocalDate,
     onPreviousDay: () -> Unit,
     onNextDay: () -> Unit,
+    onDateSelected: (LocalDate) -> Unit,
 ) {
+    var showDatePicker by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -675,13 +715,40 @@ private fun DateSelector(
         IconButton(onClick = onPreviousDay) {
             Icon(Icons.Outlined.ChevronLeft, contentDescription = "Previous day")
         }
-        Text(
-            text = date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
+        OutlinedButton(onClick = { showDatePicker = true }) {
+            Text(
+                text = date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
         IconButton(onClick = onNextDay, enabled = date.isBefore(LocalDate.now())) {
             Icon(Icons.Outlined.ChevronRight, contentDescription = "Next day")
+        }
+    }
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+                    utcTimeMillis <= LocalDate.now().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+            },
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { selectedMillis ->
+                            onDateSelected(Instant.ofEpochMilli(selectedMillis).atZone(ZoneOffset.UTC).toLocalDate())
+                        }
+                        showDatePicker = false
+                    },
+                ) { Text("Select") }
+            },
+            dismissButton = { OutlinedButton(onClick = { showDatePicker = false }) { Text("Cancel") } },
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 }
@@ -841,24 +908,30 @@ private fun TimelineRow(entry: TimelineEntry, onClick: () -> Unit) {
             "${entry.entry.amountMl} ml",
         )
     }
-    Row(
+    val accent = if (entry is TimelineEntry.Water) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(horizontal = 20.dp)
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(alpha = 0.35f)),
     ) {
-        Icon(imageVector = icon, contentDescription = null)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-            if (detail.isNotBlank()) {
-                Text(text = detail, style = MaterialTheme.typography.bodyMedium)
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = accent)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                if (detail.isNotBlank()) {
+                    Text(text = detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
+            Text(text = time, style = MaterialTheme.typography.labelMedium, color = accent)
         }
-        Text(text = time, style = MaterialTheme.typography.bodyMedium)
     }
-    HorizontalDivider(modifier = Modifier.padding(start = 56.dp, top = 12.dp))
 }
 
 private fun foodIcon(mealType: MealType?): ImageVector = when (mealType) {
@@ -885,14 +958,28 @@ private fun DeleteConfirmationDialog(
 }
 
 @Composable
-private fun EmptyTimeline() {
-    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 32.dp)) {
+private fun EmptyTimeline(onAddFood: () -> Unit, onAddWater: () -> Unit) {
+    Card(
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+        Text(text = "[  ]", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
         Text(text = "Nothing logged for this day", style = MaterialTheme.typography.titleMedium)
         Text(
             text = "Food and water entries will appear here in time order.",
-            modifier = Modifier.padding(top = 4.dp),
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = onAddFood, modifier = Modifier.weight(1f)) { Text("Add food") }
+            OutlinedButton(onClick = onAddWater, modifier = Modifier.weight(1f)) { Text("Add water") }
+        }
+        }
     }
 }
 
@@ -913,11 +1000,15 @@ private fun SettingsScreen(settingsRepository: SettingsRepository, dailyGoalStor
     val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.factory(settingsRepository, dailyGoalStore))
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     var currencyMenuExpanded by remember { mutableStateOf(false) }
     val currencies = listOf("INR", "USD", "EUR", "GBP", "AED")
 
     LaunchedEffect(state.saveConfirmationId) {
         if (state.saveConfirmationId > 0) {
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
             snackbarHostState.showSnackbar("Settings saved")
         }
     }
@@ -957,6 +1048,7 @@ private fun SettingsScreen(settingsRepository: SettingsRepository, dailyGoalStor
                 }
             }
         }
+        item { Text("Daily targets", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
         item {
             OutlinedTextField(
                 value = state.dailyWaterGoalMl,
@@ -964,6 +1056,7 @@ private fun SettingsScreen(settingsRepository: SettingsRepository, dailyGoalStor
                 label = { Text("Daily water goal (ml)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             )
         }
         item {
@@ -973,6 +1066,7 @@ private fun SettingsScreen(settingsRepository: SettingsRepository, dailyGoalStor
                 label = { Text("Daily calorie goal (kcal, optional)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             )
         }
         item {
@@ -982,8 +1076,10 @@ private fun SettingsScreen(settingsRepository: SettingsRepository, dailyGoalStor
                 label = { Text("Daily protein goal (g, optional)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             )
         }
+        item { Text("Water", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
         item {
             OutlinedTextField(
                 value = state.cupSizeMl,
@@ -991,6 +1087,7 @@ private fun SettingsScreen(settingsRepository: SettingsRepository, dailyGoalStor
                 label = { Text("Default cup size (ml)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             )
         }
         state.error?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error) } }
