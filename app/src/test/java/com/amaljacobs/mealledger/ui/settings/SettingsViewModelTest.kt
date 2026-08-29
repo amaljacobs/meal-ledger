@@ -46,6 +46,7 @@ class SettingsViewModelTest {
 
         assertFalse(viewModel.state.value.saving)
         assertEquals(3_000, store.savedSettings.dailyWaterGoalMl)
+        assertEquals(1, viewModel.state.value.saveConfirmationId)
 
         viewModel.update { it.copy(cupSizeMl = "350") }
         viewModel.save()
@@ -53,6 +54,7 @@ class SettingsViewModelTest {
 
         assertFalse(viewModel.state.value.saving)
         assertEquals(350, store.savedSettings.cupSizeMl)
+        assertEquals(2, viewModel.state.value.saveConfirmationId)
     }
 
     @Test

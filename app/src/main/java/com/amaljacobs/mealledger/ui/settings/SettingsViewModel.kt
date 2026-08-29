@@ -23,6 +23,7 @@ data class SettingsUiState(
     val loading: Boolean = true,
     val saving: Boolean = false,
     val error: String? = null,
+    val saveConfirmationId: Long = 0,
 )
 
 class SettingsViewModel(
@@ -97,7 +98,10 @@ class SettingsViewModel(
                     ),
                     LocalDate.now(clock),
                 )
-                _state.value = _state.value.copy(saving = false)
+                _state.value = _state.value.copy(
+                    saving = false,
+                    saveConfirmationId = _state.value.saveConfirmationId + 1,
+                )
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 _state.value = _state.value.copy(
