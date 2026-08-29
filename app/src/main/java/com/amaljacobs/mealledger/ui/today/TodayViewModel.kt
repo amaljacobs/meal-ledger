@@ -102,6 +102,10 @@ class TodayViewModel(
         }
     }
 
+    fun selectDate(date: LocalDate) {
+        selectedDate.value = date.coerceAtMost(LocalDate.now(clock))
+    }
+
     companion object {
         fun factory(
             repository: MealLedgerRepository,
