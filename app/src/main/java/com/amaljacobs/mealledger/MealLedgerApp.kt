@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -29,6 +31,8 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -36,7 +40,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -60,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -496,8 +500,16 @@ fun TodayScreenContent(
                 modifier = Modifier.padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Button(onClick = onAddFood) { Text("Add food") }
-                Button(onClick = onAddWater) { Text("Add water") }
+                Button(onClick = onAddFood, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Outlined.Restaurant, contentDescription = null)
+                    Spacer(Modifier.size(8.dp))
+                    Text("Add food")
+                }
+                OutlinedButton(onClick = onAddWater, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Outlined.WaterDrop, contentDescription = null)
+                    Spacer(Modifier.size(8.dp))
+                    Text("Add water")
+                }
             }
         }
         item {
@@ -676,47 +688,122 @@ private fun DateSelector(
 
 @Composable
 private fun DailyTotalsRow(totals: DailyTotals, settings: UserSettings, goal: com.amaljacobs.mealledger.data.goals.DailyGoal) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(
+        modifier = Modifier.padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            GoalTotalMetric("Calories", totals.calories, goal.calories, "kcal", Modifier.weight(1f))
-            TotalMetric(
-                label = "Spend",
-                value = formatMoney(totals.spendMinor, settings.currencyCode),
+            LedgerMetricCard(
+                label = "Calories",
+                value = totals.calories,
+                unit = "kcal",
+                goal = goal.calories,
+                accent = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f),
             )
-            WaterTotalMetric(totals.waterMl, goal.waterMl)
+            LedgerMetricCard(
+                label = "Water",
+                value = totals.waterMl,
+                unit = "ml",
+                goal = goal.waterMl,
+                accent = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.weight(1f),
+            )
         }
-        if (goal.proteinGrams != null) {
-            GoalTotalMetric("Protein", totals.proteinGrams, goal.proteinGrams, "g", Modifier.padding(horizontal = 20.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            LedgerMetricCard(
+                label = "Food spend",
+                displayValue = formatMoney(totals.spendMinor, settings.currencyCode),
+                accent = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.weight(1f),
+            )
+            if (goal.proteinGrams != null) {
+                LedgerMetricCard(
+                    label = "Protein",
+                    value = totals.proteinGrams,
+                    unit = "g",
+                    goal = goal.proteinGrams,
+                    accent = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                LedgerMetricCard(
+                    label = "Protein",
+                    displayValue = "Not set",
+                    supportingText = "Add a goal in Settings",
+                    accent = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun GoalTotalMetric(label: String, value: Int, goal: Int?, unit: String, modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        Text(text = label, style = MaterialTheme.typography.labelLarge)
-        Text(text = "$value $unit", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        goal?.let {
-            LinearProgressIndicator(progress = { (value.toFloat() / it).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
-            Text(text = "/ $it $unit", style = MaterialTheme.typography.labelSmall)
+private fun LedgerMetricCard(
+    label: String,
+    value: Int? = null,
+    unit: String? = null,
+    goal: Int? = null,
+    displayValue: String? = null,
+    supportingText: String? = null,
+    accent: Color,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.height(126.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(text = label, style = MaterialTheme.typography.labelLarge, color = accent)
+            Text(
+                text = displayValue ?: "$value $unit",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (goal != null && value != null && unit != null) {
+                SteppedProgress(
+                    progress = (value.toFloat() / goal).coerceIn(0f, 1f),
+                    color = accent,
+                )
+                Text("Goal $goal $unit", style = MaterialTheme.typography.labelSmall)
+            } else {
+                Text(supportingText.orEmpty(), style = MaterialTheme.typography.labelSmall)
+            }
         }
     }
 }
 
 @Composable
-private fun WaterTotalMetric(waterMl: Int, dailyGoalMl: Int) {
-    val progress = (waterMl.toFloat() / dailyGoalMl).coerceIn(0f, 1f)
-    Column(modifier = Modifier.size(width = 104.dp, height = 64.dp)) {
-        Text(text = "Water", style = MaterialTheme.typography.labelLarge)
-        Text(text = "$waterMl ml", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-        LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
-        Text(text = "/ $dailyGoalMl ml", style = MaterialTheme.typography.labelSmall)
+private fun SteppedProgress(progress: Float, color: Color, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        val completedSteps = (progress * 10).toInt()
+        repeat(10) { index ->
+            Spacer(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(5.dp)
+                    .background(
+                        color = if (index < completedSteps) color else MaterialTheme.colorScheme.surfaceContainerHighest,
+                        shape = RoundedCornerShape(1.dp),
+                    ),
+            )
+        }
     }
 }
 
