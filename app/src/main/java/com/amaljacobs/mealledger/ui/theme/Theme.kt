@@ -1,58 +1,56 @@
 package com.amaljacobs.mealledger.ui.theme
 
-import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.Shapes
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = LedgerMint,
+    onPrimary = LedgerInk,
+    primaryContainer = LedgerMintContainer,
+    onPrimaryContainer = LedgerMint,
+    secondary = LedgerBlue,
+    onSecondary = LedgerInk,
+    secondaryContainer = LedgerBlueContainer,
+    onSecondaryContainer = LedgerBlue,
+    tertiary = LedgerAmber,
+    onTertiary = LedgerInk,
+    tertiaryContainer = LedgerAmberContainer,
+    onTertiaryContainer = LedgerAmber,
+    background = LedgerInk,
+    onBackground = LedgerText,
+    surface = LedgerSurface,
+    onSurface = LedgerText,
+    surfaceVariant = LedgerSurfaceRaised,
+    onSurfaceVariant = LedgerMutedText,
+    surfaceContainerHighest = LedgerSurfaceBright,
+    outline = LedgerOutline,
+    outlineVariant = LedgerOutline.copy(alpha = 0.65f),
+    error = LedgerError,
+    onError = LedgerInk,
+    errorContainer = LedgerErrorContainer,
+    onErrorContainer = LedgerError,
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+val LedgerShapes = Shapes(
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(6.dp),
+    medium = RoundedCornerShape(10.dp),
+    large = RoundedCornerShape(14.dp),
+    extraLarge = RoundedCornerShape(18.dp),
 )
 
 @Composable
 fun MealLedgerTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = DarkColorScheme,
         typography = Typography,
+        shapes = LedgerShapes,
         content = content
     )
 }
