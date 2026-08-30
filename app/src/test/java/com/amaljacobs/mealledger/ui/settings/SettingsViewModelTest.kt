@@ -68,6 +68,19 @@ class SettingsViewModelTest {
         assertFalse(viewModel.state.value.saving)
         assertEquals("Could not save settings. Please try again.", viewModel.state.value.error)
     }
+
+    @Test
+    fun saveConfirmationCanOnlyBeConsumedOnce() = runTest(dispatcher) {
+        val viewModel = SettingsViewModel(FakeSettingsStore(), FakeDailyGoalStore())
+        runCurrent()
+        viewModel.save()
+        runCurrent()
+
+        viewModel.consumeSaveConfirmation(1)
+        viewModel.consumeSaveConfirmation(1)
+
+        assertEquals(0, viewModel.state.value.saveConfirmationId)
+    }
 }
 
 private class FakeDailyGoalStore : DailyGoalStore {

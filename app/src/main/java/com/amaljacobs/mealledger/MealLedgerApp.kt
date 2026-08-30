@@ -51,6 +51,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Text
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
@@ -60,6 +61,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -106,6 +108,8 @@ import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 sealed interface AppDestination {
     val label: String
@@ -1005,11 +1009,30 @@ private fun SettingsScreen(settingsRepository: SettingsRepository, dailyGoalStor
     var currencyMenuExpanded by remember { mutableStateOf(false) }
     val currencies = listOf("INR", "USD", "EUR", "GBP", "AED")
 
+    DisposableEffect(snackbarHostState) {
+        onDispose {
+            snackbarHostState.currentSnackbarData?.dismiss()
+        }
+    }
+
     LaunchedEffect(state.saveConfirmationId) {
-        if (state.saveConfirmationId > 0) {
+        val confirmationId = state.saveConfirmationId
+        if (confirmationId > 0) {
             focusManager.clearFocus(force = true)
             keyboardController?.hide()
-            snackbarHostState.showSnackbar("Settings saved")
+            try {
+                val snackbar = launch {
+                    snackbarHostState.showSnackbar(
+                        message = "Settings saved",
+                        duration = SnackbarDuration.Indefinite,
+                    )
+                }
+                delay(2_000)
+                snackbarHostState.currentSnackbarData?.dismiss()
+                snackbar.join()
+            } finally {
+                viewModel.consumeSaveConfirmation(confirmationId)
+            }
         }
     }
 
