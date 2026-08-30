@@ -58,6 +58,13 @@ class SettingsViewModel(
         _state.value = transform(_state.value).copy(error = null)
     }
 
+    fun consumeSaveConfirmation(confirmationId: Long) {
+        val current = _state.value
+        if (current.saveConfirmationId == confirmationId) {
+            _state.value = current.copy(saveConfirmationId = 0)
+        }
+    }
+
     fun save() {
         val current = _state.value
         if (current.loading || current.saving) return

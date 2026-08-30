@@ -1016,18 +1016,23 @@ private fun SettingsScreen(settingsRepository: SettingsRepository, dailyGoalStor
     }
 
     LaunchedEffect(state.saveConfirmationId) {
-        if (state.saveConfirmationId > 0) {
+        val confirmationId = state.saveConfirmationId
+        if (confirmationId > 0) {
             focusManager.clearFocus(force = true)
             keyboardController?.hide()
-            val snackbar = launch {
-                snackbarHostState.showSnackbar(
-                    message = "Settings saved",
-                    duration = SnackbarDuration.Indefinite,
-                )
+            try {
+                val snackbar = launch {
+                    snackbarHostState.showSnackbar(
+                        message = "Settings saved",
+                        duration = SnackbarDuration.Indefinite,
+                    )
+                }
+                delay(2_000)
+                snackbarHostState.currentSnackbarData?.dismiss()
+                snackbar.join()
+            } finally {
+                viewModel.consumeSaveConfirmation(confirmationId)
             }
-            delay(2_000)
-            snackbarHostState.currentSnackbarData?.dismiss()
-            snackbar.join()
         }
     }
 
