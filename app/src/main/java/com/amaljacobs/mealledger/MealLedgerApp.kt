@@ -193,17 +193,29 @@ fun MealLedgerApp(
                     repository = repository,
                     settingsRepository = settingsRepository,
                     dailyGoalStore = dailyGoalStore,
-                    onAddFood = { navController.navigate("add-food") },
-                    onAddWater = { navController.navigate("add-water") },
+                    onAddFood = { date -> navController.navigate("add-food/$date") },
+                    onAddWater = { date -> navController.navigate("add-water/$date") },
                     onEditFood = { id -> navController.navigate("edit-food/$id") },
                     onEditWater = { id -> navController.navigate("edit-water/$id") },
                 )
             }
-            composable("add-food") {
-                FoodEntryScreen(repository, settingsRepository, onSaved = { navController.popBackStack() }, onNavigateBack = { navController.popBackStack() })
+            composable("add-food/{selectedDate}") { entry ->
+                FoodEntryScreen(
+                    repository = repository,
+                    settingsRepository = settingsRepository,
+                    selectedDate = entry.arguments?.getString("selectedDate")?.let(LocalDate::parse),
+                    onSaved = { navController.popBackStack() },
+                    onNavigateBack = { navController.popBackStack() },
+                )
             }
-            composable("add-water") {
-                WaterEntryScreen(repository, settingsRepository, onSaved = { navController.popBackStack() }, onNavigateBack = { navController.popBackStack() })
+            composable("add-water/{selectedDate}") { entry ->
+                WaterEntryScreen(
+                    repository = repository,
+                    settingsRepository = settingsRepository,
+                    selectedDate = entry.arguments?.getString("selectedDate")?.let(LocalDate::parse),
+                    onSaved = { navController.popBackStack() },
+                    onNavigateBack = { navController.popBackStack() },
+                )
             }
             composable(
                 route = "edit-food/{entryId}",
@@ -472,8 +484,8 @@ private fun TodayScreen(
     repository: MealLedgerRepository,
     settingsRepository: SettingsRepository,
     dailyGoalStore: DailyGoalStore,
-    onAddFood: () -> Unit,
-    onAddWater: () -> Unit,
+    onAddFood: (LocalDate) -> Unit,
+    onAddWater: (LocalDate) -> Unit,
     onEditFood: (Long) -> Unit,
     onEditWater: (Long) -> Unit,
 ) {
@@ -488,8 +500,8 @@ private fun TodayScreen(
             onPreviousDay = viewModel::showPreviousDay,
             onNextDay = viewModel::showNextDay,
             onDateSelected = viewModel::selectDate,
-            onAddFood = onAddFood,
-            onAddWater = onAddWater,
+            onAddFood = { onAddFood((state as TodayUiState.Ready).selectedDate) },
+            onAddWater = { onAddWater((state as TodayUiState.Ready).selectedDate) },
             onEditFood = onEditFood,
             onEditWater = onEditWater,
         )
@@ -567,12 +579,13 @@ fun TodayScreenContent(
 private fun FoodEntryScreen(
     repository: MealLedgerRepository,
     settingsRepository: SettingsRepository,
+    selectedDate: LocalDate? = null,
     entryId: Long? = null,
     onSaved: () -> Unit,
     onNavigateBack: () -> Unit,
 ) {
     val viewModel: FoodEntryViewModel = viewModel(
-        factory = FoodEntryViewModel.factory(repository, settingsRepository, onSaved, entryId),
+        factory = FoodEntryViewModel.factory(repository, settingsRepository, onSaved, entryId, selectedDate),
     )
     val state by viewModel.state.collectAsState()
     val settings by settingsRepository.settings.collectAsState(initial = UserSettings())
@@ -624,11 +637,14 @@ private fun FoodEntryScreen(
 private fun WaterEntryScreen(
     repository: MealLedgerRepository,
     settingsRepository: SettingsRepository,
+    selectedDate: LocalDate? = null,
     entryId: Long? = null,
     onSaved: () -> Unit,
     onNavigateBack: () -> Unit,
 ) {
-    val viewModel: WaterEntryViewModel = viewModel(factory = WaterEntryViewModel.factory(repository, onSaved, entryId))
+    val viewModel: WaterEntryViewModel = viewModel(
+        factory = WaterEntryViewModel.factory(repository, onSaved, entryId, selectedDate),
+    )
     val state by viewModel.state.collectAsState()
     val settings by settingsRepository.settings.collectAsState(initial = UserSettings())
     var showDeleteConfirmation by remember { mutableStateOf(false) }

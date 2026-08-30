@@ -8,6 +8,7 @@ import com.amaljacobs.mealledger.data.local.MealType
 import com.amaljacobs.mealledger.data.repository.MealLedgerRepository
 import com.amaljacobs.mealledger.data.settings.SettingsRepository
 import java.time.Clock
+import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +33,7 @@ class FoodEntryViewModel(
     private val settingsRepository: SettingsRepository,
     private val onSaved: () -> Unit,
     entryId: Long? = null,
+    private val selectedDate: LocalDate? = null,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private val _state = MutableStateFlow(FoodEntryFormState())
@@ -65,7 +67,7 @@ class FoodEntryViewModel(
             val entry = FoodEntryEntity(
                 id = existingEntry?.id ?: 0,
                 name = current.name.trim(),
-                consumedAt = existingEntry?.consumedAt ?: now,
+                consumedAt = existingEntry?.consumedAt ?: selectedDate.toEntryInstant(now, clock),
                 mealType = current.mealType,
                 portionNote = current.portionNote.trim().ifBlank { null },
                 calories = calories,
@@ -117,11 +119,15 @@ class FoodEntryViewModel(
             settingsRepository: SettingsRepository,
             onSaved: () -> Unit,
             entryId: Long? = null,
+            selectedDate: LocalDate? = null,
         ) = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = FoodEntryViewModel(repository, settingsRepository, onSaved, entryId) as T
+            @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = FoodEntryViewModel(repository, settingsRepository, onSaved, entryId, selectedDate) as T
         }
     }
 }
+
+private fun LocalDate?.toEntryInstant(now: java.time.Instant, clock: Clock): java.time.Instant =
+    this?.atTime(now.atZone(clock.zone).toLocalTime())?.atZone(clock.zone)?.toInstant() ?: now
 
 fun parsePriceMinor(value: String): Long? {
     val match = Regex("^(\\d+)(?:\\.(\\d{1,2}))?$").matchEntire(value.trim()) ?: return null
