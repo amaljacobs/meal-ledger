@@ -351,12 +351,12 @@ private fun GoalAttainment(state: WeeklySummaryUiState.Ready) {
     Card(modifier = Modifier.padding(horizontal = 20.dp)) {
     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("GOAL CHECK", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-        GoalProgress("Water", state.daysAtWaterGoal, state.days.size)
+        GoalProgress("Water", state.daysAtWaterGoal, state.days.size, "days")
         state.daysAtCalorieGoal?.let {
-            GoalProgress("Calories", it, state.calorieGoalDayCount)
+            GoalProgress("Calories", it, state.calorieGoalDayCount, "days with a goal")
         }
         state.daysAtProteinGoal?.let {
-            GoalProgress("Protein", it, state.proteinGoalDayCount)
+            GoalProgress("Protein", it, state.proteinGoalDayCount, "days with a goal")
         }
     }
     }
@@ -384,8 +384,8 @@ private fun SummaryHero(state: WeeklySummaryUiState.Ready) {
 }
 
 @Composable
-private fun GoalProgress(label: String, complete: Int, total: Int) {
-    Text("$label  $complete/$total", style = MaterialTheme.typography.bodyMedium)
+private fun GoalProgress(label: String, complete: Int, total: Int, denominatorLabel: String) {
+    Text("$label  $complete/$total $denominatorLabel", style = MaterialTheme.typography.bodyMedium)
     LinearProgressIndicator(progress = { if (total == 0) 0f else complete.toFloat() / total }, modifier = Modifier.fillMaxWidth())
 }
 
