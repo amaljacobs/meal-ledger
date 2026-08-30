@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.amaljacobs.mealledger.data.local.WaterEntryEntity
 import com.amaljacobs.mealledger.data.repository.MealLedgerRepository
 import java.time.Clock
+import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +23,7 @@ class WaterEntryViewModel(
     private val repository: MealLedgerRepository,
     private val onSaved: () -> Unit,
     entryId: Long? = null,
+    private val selectedDate: LocalDate? = null,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private val _state = MutableStateFlow(WaterEntryFormState())
@@ -49,7 +51,7 @@ class WaterEntryViewModel(
             val entry = WaterEntryEntity(
                 id = existingEntry?.id ?: 0,
                 amountMl = amount,
-                consumedAt = existingEntry?.consumedAt ?: now,
+                consumedAt = existingEntry?.consumedAt ?: selectedDate.toEntryInstant(now, clock),
                 createdAt = existingEntry?.createdAt ?: now,
                 updatedAt = now,
             )
@@ -81,8 +83,11 @@ class WaterEntryViewModel(
     }
 
     companion object {
-        fun factory(repository: MealLedgerRepository, onSaved: () -> Unit, entryId: Long? = null) = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = WaterEntryViewModel(repository, onSaved, entryId) as T
+        fun factory(repository: MealLedgerRepository, onSaved: () -> Unit, entryId: Long? = null, selectedDate: LocalDate? = null) = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = WaterEntryViewModel(repository, onSaved, entryId, selectedDate) as T
         }
     }
 }
+
+private fun LocalDate?.toEntryInstant(now: java.time.Instant, clock: Clock): java.time.Instant =
+    this?.atTime(now.atZone(clock.zone).toLocalTime())?.atZone(clock.zone)?.toInstant() ?: now
