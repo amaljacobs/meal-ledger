@@ -51,6 +51,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Text
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
@@ -107,6 +108,8 @@ import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 sealed interface AppDestination {
     val label: String
@@ -1016,7 +1019,15 @@ private fun SettingsScreen(settingsRepository: SettingsRepository, dailyGoalStor
         if (state.saveConfirmationId > 0) {
             focusManager.clearFocus(force = true)
             keyboardController?.hide()
-            snackbarHostState.showSnackbar("Settings saved")
+            val snackbar = launch {
+                snackbarHostState.showSnackbar(
+                    message = "Settings saved",
+                    duration = SnackbarDuration.Indefinite,
+                )
+            }
+            delay(2_000)
+            snackbarHostState.currentSnackbarData?.dismiss()
+            snackbar.join()
         }
     }
 
