@@ -1,6 +1,8 @@
 package com.amaljacobs.mealledger.data.settings
 
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -19,10 +21,15 @@ interface SettingsStore {
     suspend fun update(settings: UserSettings)
 }
 
-class SettingsRepository(private val context: Context) : SettingsStore {
-    override val settings: Flow<UserSettings> = context.settingsDataStore.data.map { preferences ->
+class SettingsRepository(
+    private val dataStore: DataStore<Preferences>,
+    private val currencyCodeProvider: () -> String = ::defaultCurrencyCode,
+) : SettingsStore {
+    constructor(context: Context) : this(context.settingsDataStore)
+
+    override val settings: Flow<UserSettings> = dataStore.data.map { preferences ->
         UserSettings(
-            currencyCode = preferences[CurrencyCodeKey] ?: defaultCurrencyCode(),
+            currencyCode = preferences[CurrencyCodeKey] ?: currencyCodeProvider(),
             dailyWaterGoalMl = preferences[DailyWaterGoalKey] ?: 2_500,
             dailyCalorieGoal = preferences[DailyCalorieGoalKey],
             dailyProteinGoalGrams = preferences[DailyProteinGoalKey],
@@ -31,7 +38,7 @@ class SettingsRepository(private val context: Context) : SettingsStore {
     }
 
     override suspend fun update(settings: UserSettings) {
-        context.settingsDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[CurrencyCodeKey] = settings.currencyCode
             preferences[DailyWaterGoalKey] = settings.dailyWaterGoalMl
             settings.dailyCalorieGoal?.let { preferences[DailyCalorieGoalKey] = it } ?: preferences.remove(DailyCalorieGoalKey)
@@ -40,11 +47,11 @@ class SettingsRepository(private val context: Context) : SettingsStore {
         }
     }
 
-    private fun defaultCurrencyCode(): String = runCatching {
-        Currency.getInstance(Locale.getDefault()).currencyCode
-    }.getOrDefault("INR")
-
     private companion object {
+        fun defaultCurrencyCode(): String = runCatching {
+            Currency.getInstance(Locale.getDefault()).currencyCode
+        }.getOrDefault("INR")
+
         val CurrencyCodeKey = stringPreferencesKey("currency_code")
         val DailyWaterGoalKey = intPreferencesKey("daily_water_goal_ml")
         val DailyCalorieGoalKey = intPreferencesKey("daily_calorie_goal")

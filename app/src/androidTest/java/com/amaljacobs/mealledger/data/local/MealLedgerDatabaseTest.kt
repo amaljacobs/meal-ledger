@@ -5,6 +5,8 @@ import androidx.room.Room
 import androidx.test.platform.app.InstrumentationRegistry
 import com.amaljacobs.mealledger.data.repository.MealLedgerRepository
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -15,6 +17,7 @@ import org.junit.Test
 
 class MealLedgerDatabaseTest {
     private val migrationDatabaseName = "meal-ledger-migration-test"
+    private val persistenceDatabaseName = "meal-ledger-persistence-test"
     private lateinit var database: MealLedgerDatabase
     private lateinit var repository: MealLedgerRepository
 
@@ -29,6 +32,7 @@ class MealLedgerDatabaseTest {
     fun closeDatabase() {
         database.close()
         InstrumentationRegistry.getInstrumentation().targetContext.deleteDatabase(migrationDatabaseName)
+        InstrumentationRegistry.getInstrumentation().targetContext.deleteDatabase(persistenceDatabaseName)
     }
 
     @Test
@@ -88,6 +92,95 @@ class MealLedgerDatabaseTest {
 
         assertEquals(entryId, entries.single().id)
         assertEquals(500, entries.single().amountMl)
+    }
+
+    @Test
+    fun entriesAndGoalHistorySurviveDatabaseRecreation() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val consumedAt = Instant.parse("2026-08-16T10:30:00Z")
+        val firstDatabase = Room.databaseBuilder(
+            context,
+            MealLedgerDatabase::class.java,
+            persistenceDatabaseName,
+        ).build()
+        val firstRepository = MealLedgerRepository(firstDatabase.foodEntryDao(), firstDatabase.waterEntryDao())
+
+        firstRepository.addFoodEntry(
+            FoodEntryEntity(
+                name = "Overnight oats",
+                consumedAt = consumedAt,
+                calories = 480,
+                createdAt = consumedAt,
+                updatedAt = consumedAt,
+            ),
+        )
+        firstRepository.addWaterEntry(
+            WaterEntryEntity(
+                amountMl = 400,
+                consumedAt = consumedAt,
+                createdAt = consumedAt,
+                updatedAt = consumedAt,
+            ),
+        )
+        firstDatabase.dailyGoalDao().upsert(DailyGoalEntity("2026-08-16", 2_750, 2_100, 120))
+        firstDatabase.close()
+
+        val reopenedDatabase = Room.databaseBuilder(
+            context,
+            MealLedgerDatabase::class.java,
+            persistenceDatabaseName,
+        ).build()
+        val reopenedRepository = MealLedgerRepository(reopenedDatabase.foodEntryDao(), reopenedDatabase.waterEntryDao())
+
+        assertEquals(
+            "Overnight oats",
+            reopenedRepository.observeFoodEntries(consumedAt.minusSeconds(1), consumedAt.plusSeconds(1)).first().single().name,
+        )
+        assertEquals(
+            400,
+            reopenedRepository.observeWaterEntries(consumedAt.minusSeconds(1), consumedAt.plusSeconds(1)).first().single().amountMl,
+        )
+        assertEquals(
+            DailyGoalEntity("2026-08-16", 2_750, 2_100, 120),
+            reopenedDatabase.dailyGoalDao().observeAll().first().single(),
+        )
+        reopenedDatabase.close()
+    }
+
+    @Test
+    fun dayQueriesRespectLocalDayBoundariesWithoutDuplicates() = runBlocking {
+        val zone = ZoneId.of("Asia/Kolkata")
+        val day = LocalDate.of(2026, 8, 16)
+        val start = day.atStartOfDay(zone).toInstant()
+        val end = day.plusDays(1).atStartOfDay(zone).toInstant()
+        val timestamp = Instant.parse("2026-08-15T20:00:00Z")
+        listOf(start, end.minusMillis(1), end).forEachIndexed { index, consumedAt ->
+            repository.addFoodEntry(
+                FoodEntryEntity(
+                    name = "Food $index",
+                    consumedAt = consumedAt,
+                    createdAt = timestamp,
+                    updatedAt = timestamp,
+                ),
+            )
+            repository.addWaterEntry(
+                WaterEntryEntity(
+                    amountMl = 100 + index,
+                    consumedAt = consumedAt,
+                    createdAt = timestamp,
+                    updatedAt = timestamp,
+                ),
+            )
+        }
+
+        assertEquals(
+            listOf("Food 1", "Food 0"),
+            repository.observeFoodEntries(start, end).first().map(FoodEntryEntity::name),
+        )
+        assertEquals(
+            listOf(101, 100),
+            repository.observeWaterEntries(start, end).first().map(WaterEntryEntity::amountMl),
+        )
     }
 
     @Test
