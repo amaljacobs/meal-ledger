@@ -43,6 +43,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -281,7 +282,11 @@ private fun WeeklySummaryContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+            Card(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+            ) {
+            Column(modifier = Modifier.padding(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onPreviousPeriod) {
                         Icon(Icons.Outlined.ChevronLeft, contentDescription = "Previous ${state.period.mode.name.lowercase()}")
@@ -317,23 +322,10 @@ private fun WeeklySummaryContent(
                     )
                 }
             }
-        }
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                TotalMetric("Calories", state.totalCalories.toString(), Modifier.weight(1f))
-                TotalMetric("Food spend", formatMoney(state.totalSpendMinor, state.settings.currencyCode), Modifier.weight(1f))
-                TotalMetric("Avg. water", "${state.averageWaterMl} ml", Modifier.weight(1f))
             }
         }
         item {
-            TotalMetric(
-                "Protein",
-                "${state.totalProteinGrams} g",
-                Modifier.padding(horizontal = 20.dp),
-            )
+            SummaryHero(state)
         }
         item {
             GoalAttainment(state)
@@ -356,21 +348,45 @@ private fun WeeklySummaryContent(
 
 @Composable
 private fun GoalAttainment(state: WeeklySummaryUiState.Ready) {
-    Column(
-        modifier = Modifier.padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Text(
-            "Water goal: ${state.daysAtWaterGoal} of ${state.days.size} days",
-            style = MaterialTheme.typography.bodyMedium,
-        )
+    Card(modifier = Modifier.padding(horizontal = 20.dp)) {
+    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("GOAL CHECK", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        GoalProgress("Water", state.daysAtWaterGoal, state.days.size)
         state.daysAtCalorieGoal?.let {
-            Text("Calorie goal: $it of ${state.calorieGoalDayCount} days", style = MaterialTheme.typography.bodyMedium)
+            GoalProgress("Calories", it, state.calorieGoalDayCount)
         }
         state.daysAtProteinGoal?.let {
-            Text("Protein goal: $it of ${state.proteinGoalDayCount} days", style = MaterialTheme.typography.bodyMedium)
+            GoalProgress("Protein", it, state.proteinGoalDayCount)
         }
     }
+    }
+}
+
+@Composable
+private fun SummaryHero(state: WeeklySummaryUiState.Ready) {
+    Card(
+        modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text("LEDGER TOTALS", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Row {
+                TotalMetric("CALORIES", state.totalCalories.toString(), Modifier.weight(1f))
+                TotalMetric("PROTEIN", "${state.totalProteinGrams} g", Modifier.weight(1f))
+            }
+            Row {
+                TotalMetric("WATER AVG.", "${state.averageWaterMl} ml", Modifier.weight(1f))
+                TotalMetric("SPEND", formatMoney(state.totalSpendMinor, state.settings.currencyCode), Modifier.weight(1f))
+            }
+            Text("${state.days.count { it.entryCount > 0 }} ACTIVE DAYS", style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
+
+@Composable
+private fun GoalProgress(label: String, complete: Int, total: Int) {
+    Text("$label  $complete/$total", style = MaterialTheme.typography.bodyMedium)
+    LinearProgressIndicator(progress = { if (total == 0) 0f else complete.toFloat() / total }, modifier = Modifier.fillMaxWidth())
 }
 
 private fun periodLabel(state: WeeklySummaryUiState.Ready): String = if (state.period.mode == SummaryMode.Month) {
@@ -385,7 +401,7 @@ private fun MonthlyCalendar(state: WeeklySummaryUiState.Ready) {
     val leadingEmptyDays = state.period.startDate.dayOfWeek.value - 1
     val calendarDays = List<WeeklyDaySummary?>(leadingEmptyDays) { null } + state.days
     Column(modifier = Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("Daily activity", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text("MONTH MAP", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MonthlyMetric.entries.forEach { metric ->
                 FilterChip(
@@ -425,11 +441,12 @@ private fun MonthlyDayCell(
 ) {
     val cellShape = RoundedCornerShape(4.dp)
     val hasActivity = day?.entryCount?.let { it > 0 } == true
+    val activityAlpha = day?.entryCount?.coerceAtMost(4)?.let { 0.18f + (it * 0.14f) } ?: 0f
     Column(
         modifier = modifier
             .aspectRatio(0.9f)
             .background(
-                color = if (hasActivity) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f) else MaterialTheme.colorScheme.surface,
+                color = if (hasActivity) MaterialTheme.colorScheme.primaryContainer.copy(alpha = activityAlpha) else MaterialTheme.colorScheme.surface,
                 shape = cellShape,
             )
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, cellShape)
@@ -462,21 +479,30 @@ private enum class MonthlyMetric(val label: String) {
 
 @Composable
 private fun WeeklyDayRow(day: WeeklyDaySummary, settings: UserSettings) {
-    Row(
+    Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (day.entryCount > 0) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f) else MaterialTheme.colorScheme.surface,
+        ),
+    ) {
+    Row(
+        modifier = Modifier.padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(day.date.format(DateTimeFormatter.ofPattern("EEE, MMM d")), fontWeight = FontWeight.Medium)
+            Text(day.date.format(DateTimeFormatter.ofPattern("EEE • MMM d")).uppercase(), fontWeight = FontWeight.Bold)
             Text(
                 if (day.entryCount == 0) "No entries" else "${day.calories} kcal | ${day.waterMl} ml",
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
-        Text(formatMoney(day.spendMinor, settings.currencyCode), style = MaterialTheme.typography.bodyMedium)
+        Column(horizontalAlignment = Alignment.End) {
+            Text(formatMoney(day.spendMinor, settings.currencyCode), style = MaterialTheme.typography.bodyMedium)
+            Text("${day.entryCount} LOGS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+        }
     }
-    HorizontalDivider(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp))
+    }
 }
 
 @Composable
