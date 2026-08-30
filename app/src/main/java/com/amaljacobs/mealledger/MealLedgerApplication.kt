@@ -15,6 +15,8 @@ class MealLedgerApplication : Application() {
     val settingsRepository: SettingsRepository by lazy { SettingsRepository(this) }
     private val database: MealLedgerDatabase by lazy { MealLedgerDatabase.create(this) }
 
+    val settingsRepository2: SettingsRepository by lazy { SettingsRepository(this) }
+
     val repository: MealLedgerRepository by lazy {
         MealLedgerRepository(database.foodEntryDao(), database.waterEntryDao())
     }
