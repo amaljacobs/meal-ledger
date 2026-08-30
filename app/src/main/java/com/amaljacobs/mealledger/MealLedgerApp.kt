@@ -60,6 +60,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -1004,6 +1005,12 @@ private fun SettingsScreen(settingsRepository: SettingsRepository, dailyGoalStor
     val keyboardController = LocalSoftwareKeyboardController.current
     var currencyMenuExpanded by remember { mutableStateOf(false) }
     val currencies = listOf("INR", "USD", "EUR", "GBP", "AED")
+
+    DisposableEffect(snackbarHostState) {
+        onDispose {
+            snackbarHostState.currentSnackbarData?.dismiss()
+        }
+    }
 
     LaunchedEffect(state.saveConfirmationId) {
         if (state.saveConfirmationId > 0) {
